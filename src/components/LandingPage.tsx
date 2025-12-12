@@ -4,7 +4,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { SocialProof } from './SocialProof';
 import { PWAInstallPrompt } from './PWAInstallPrompt';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { useLandingPageContent } from '../hooks/useAdminContent';
 import { Screen } from '../App';
 import bandhuMascot from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
@@ -38,7 +38,9 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
 
   const handleGetStarted = () => onNavigate('splash');
   const handleWatchDemo = () => onNavigate('videos');
-  const handleLogin = () => onNavigate('login');
+  const handleLogin = () => {
+    window.location.href = '/api/login';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
