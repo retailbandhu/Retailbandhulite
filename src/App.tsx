@@ -1,46 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { MarketingHub } from './components/MarketingHub';
-import { SplashScreen } from './components/SplashScreen';
-import { OnboardingSlides } from './components/OnboardingSlides';
-import { LoginScreen } from './components/LoginScreen';
-import { StoreSetup } from './components/StoreSetup';
-import { Dashboard } from './components/Dashboard';
-import { EnhancedBillingScreen } from './components/EnhancedBillingScreen';
-import { BillPreview } from './components/BillPreview';
-import { InventoryScreen } from './components/InventoryScreen';
-import { CatalogCreator } from './components/CatalogCreator';
-import { ReportsScreen } from './components/ReportsScreen';
-import { SettingsScreen } from './components/SettingsScreen';
-import { WhatsAppAutomation } from './components/WhatsAppAutomation';
-import { SubscriptionPage } from './components/SubscriptionPage';
-import { CustomBillTemplate } from './components/CustomBillTemplate';
-import { AiAssistant } from './components/AiAssistant';
-import { KhataManagement } from './components/KhataManagement';
-import { ExpenseTracker } from './components/ExpenseTracker';
-import { NotificationCenter } from './components/NotificationCenter';
-import { QuickActionsMenu } from './components/QuickActionsMenu';
-import { SalesHistory } from './components/SalesHistory';
-import { BusinessInsights } from './components/BusinessInsights';
-import { QuickPOSMode } from './components/QuickPOSMode';
-import { CustomerManagement } from './components/CustomerManagement';
-import { BarcodeScanner } from './components/BarcodeScanner';
-import { PartyManagement } from './components/PartyManagement';
-import { GSTSettings } from './components/GSTSettings';
-import { LoyaltyProgram } from './components/LoyaltyProgram';
-import { DataBackup } from './components/DataBackup';
-import { ReorderAlerts } from './components/ReorderAlerts';
-import { SystemHealthMonitor } from './components/SystemHealthMonitor';
-import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { PrinterSetup } from './components/PrinterSetup';
-import { EnhancedAdminPanel } from './components/EnhancedAdminPanel';
-import { PerformanceMonitor } from './components/PerformanceMonitor';
-import { PWAInstaller } from './components/PWAInstaller';
-import { GlobalSearch, useGlobalSearchShortcut } from './components/GlobalSearch';
-import { KeyboardShortcuts, useKeyboardShortcutsHelp } from './components/KeyboardShortcuts';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { storage } from './utils/storage';
 import { Toaster } from './components/ui/sonner';
 import { useAuth } from './hooks/useAuth';
+
+const ErrorBoundary = lazy(() => import('./components/ErrorBoundary').then(m => ({ default: m.ErrorBoundary })));
+const MarketingHub = lazy(() => import('./components/MarketingHub').then(m => ({ default: m.MarketingHub })));
+const SplashScreen = lazy(() => import('./components/SplashScreen').then(m => ({ default: m.SplashScreen })));
+const OnboardingSlides = lazy(() => import('./components/OnboardingSlides').then(m => ({ default: m.OnboardingSlides })));
+const LoginScreen = lazy(() => import('./components/LoginScreen').then(m => ({ default: m.LoginScreen })));
+const StoreSetup = lazy(() => import('./components/StoreSetup').then(m => ({ default: m.StoreSetup })));
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const EnhancedBillingScreen = lazy(() => import('./components/EnhancedBillingScreen').then(m => ({ default: m.EnhancedBillingScreen })));
+const BillPreview = lazy(() => import('./components/BillPreview').then(m => ({ default: m.BillPreview })));
+const InventoryScreen = lazy(() => import('./components/InventoryScreen').then(m => ({ default: m.InventoryScreen })));
+const CatalogCreator = lazy(() => import('./components/CatalogCreator').then(m => ({ default: m.CatalogCreator })));
+const ReportsScreen = lazy(() => import('./components/ReportsScreen').then(m => ({ default: m.ReportsScreen })));
+const SettingsScreen = lazy(() => import('./components/SettingsScreen').then(m => ({ default: m.SettingsScreen })));
+const WhatsAppAutomation = lazy(() => import('./components/WhatsAppAutomation').then(m => ({ default: m.WhatsAppAutomation })));
+const SubscriptionPage = lazy(() => import('./components/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })));
+const CustomBillTemplate = lazy(() => import('./components/CustomBillTemplate').then(m => ({ default: m.CustomBillTemplate })));
+const AiAssistant = lazy(() => import('./components/AiAssistant').then(m => ({ default: m.AiAssistant })));
+const KhataManagement = lazy(() => import('./components/KhataManagement').then(m => ({ default: m.KhataManagement })));
+const ExpenseTracker = lazy(() => import('./components/ExpenseTracker').then(m => ({ default: m.ExpenseTracker })));
+const NotificationCenter = lazy(() => import('./components/NotificationCenter').then(m => ({ default: m.NotificationCenter })));
+const QuickActionsMenu = lazy(() => import('./components/QuickActionsMenu').then(m => ({ default: m.QuickActionsMenu })));
+const SalesHistory = lazy(() => import('./components/SalesHistory').then(m => ({ default: m.SalesHistory })));
+const BusinessInsights = lazy(() => import('./components/BusinessInsights').then(m => ({ default: m.BusinessInsights })));
+const QuickPOSMode = lazy(() => import('./components/QuickPOSMode').then(m => ({ default: m.QuickPOSMode })));
+const CustomerManagement = lazy(() => import('./components/CustomerManagement').then(m => ({ default: m.CustomerManagement })));
+const BarcodeScanner = lazy(() => import('./components/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })));
+const PartyManagement = lazy(() => import('./components/PartyManagement').then(m => ({ default: m.PartyManagement })));
+const GSTSettings = lazy(() => import('./components/GSTSettings').then(m => ({ default: m.GSTSettings })));
+const LoyaltyProgram = lazy(() => import('./components/LoyaltyProgram').then(m => ({ default: m.LoyaltyProgram })));
+const DataBackup = lazy(() => import('./components/DataBackup').then(m => ({ default: m.DataBackup })));
+const ReorderAlerts = lazy(() => import('./components/ReorderAlerts').then(m => ({ default: m.ReorderAlerts })));
+const SystemHealthMonitor = lazy(() => import('./components/SystemHealthMonitor').then(m => ({ default: m.SystemHealthMonitor })));
+const LanguageSwitcher = lazy(() => import('./components/LanguageSwitcher').then(m => ({ default: m.LanguageSwitcher })));
+const PrinterSetup = lazy(() => import('./components/PrinterSetup').then(m => ({ default: m.PrinterSetup })));
+const EnhancedAdminPanel = lazy(() => import('./components/EnhancedAdminPanel').then(m => ({ default: m.EnhancedAdminPanel })));
+const PerformanceMonitor = lazy(() => import('./components/PerformanceMonitor').then(m => ({ default: m.PerformanceMonitor })));
+const PWAInstaller = lazy(() => import('./components/PWAInstaller').then(m => ({ default: m.PWAInstaller })));
+
+import { useGlobalSearchShortcut } from './components/GlobalSearch';
+import { useKeyboardShortcutsHelp } from './components/KeyboardShortcuts';
+const GlobalSearch = lazy(() => import('./components/GlobalSearch').then(m => ({ default: m.GlobalSearch })));
+const KeyboardShortcuts = lazy(() => import('./components/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
+
+function LoadingSpinner() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 export type Screen = 
   | 'marketing'
@@ -394,7 +409,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ErrorBoundary>
+      <Suspense fallback={<LoadingSpinner />}>
         {renderScreen()}
         
         {/* Dashboard Overlays */}
@@ -430,7 +445,7 @@ function App() {
         <PWAInstaller />
         
         <Toaster />
-      </ErrorBoundary>
+      </Suspense>
     </div>
   );
 }
