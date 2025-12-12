@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Plus, Trash2, MessageCircle, Printer, Save, Mic, User, Award, Receipt, Phone, Search, Zap, CreditCard, Banknote, Smartphone, BookOpen, MinusCircle, PlusCircle, StickyNote } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -8,11 +8,12 @@ import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { VoiceButton } from './VoiceButton';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { gstStorage, calculateGST, type ProductWithGST } from '../utils/gst';
 import { storage } from '../utils/storage';
 import { loyaltyStorage, awardPointsForPurchase, getCurrentTier } from '../utils/loyalty';
 import type { Screen, Product, BillItem } from '../App';
+import type { ParsedVoiceItem } from '../hooks/useVoiceRecognition';
 
 interface EnhancedBillingScreenProps {
   onNavigate: (screen: Screen) => void;
@@ -68,24 +69,43 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
     }
   }, [selectedCustomer, customers]);
 
-  const handleVoiceInput = (text: string) => {
+  const handleVoiceInput = useCallback((text: string) => {
     setVoiceText(text);
     setShowVoiceOverlay(true);
     
     setTimeout(() => {
-      const item: BillItem = {
-        id: Date.now().toString(),
-        productName: 'Pepsi 250ml',
-        quantity: 2,
-        price: 20,
-        total: 40
-      };
-      setCurrentBill([...currentBill, item]);
       setShowVoiceOverlay(false);
       setVoiceText('');
-      toast.success('Item added via voice!');
-    }, 1500);
-  };
+    }, 2000);
+  }, []);
+
+  const handleParsedVoiceItems = useCallback((items: ParsedVoiceItem[]) => {
+    const newItems: BillItem[] = [];
+    
+    for (const item of items) {
+      if (item.matchedProduct) {
+        const product = products.find(p => p.id === item.matchedProduct!.id);
+        if (product) {
+          const billItem: BillItem = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            productName: product.name,
+            quantity: item.quantity,
+            price: product.price,
+            total: product.price * item.quantity
+          };
+          newItems.push(billItem);
+        }
+      }
+    }
+
+    if (newItems.length > 0) {
+      setCurrentBill([...currentBill, ...newItems]);
+      const itemNames = newItems.map(i => `${i.quantity}x ${i.productName}`).join(', ');
+      toast.success(`Bill mein add ho gaya: ${itemNames}`);
+    } else {
+      toast.error('Product nahi mila. Dobara try karein.');
+    }
+  }, [currentBill, products, setCurrentBill]);
 
   const handleVoiceMobileInput = () => {
     setIsListeningForMobile(true);
@@ -460,7 +480,12 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
         <Card className="p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-200 shadow-md">
           <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-orange-50 p-3 rounded-lg border border-blue-200">
             <div className="relative flex-shrink-0">
-              <VoiceButton onVoiceInput={handleVoiceInput} />
+              <VoiceButton 
+                onVoiceInput={handleVoiceInput} 
+                onParsedItems={handleParsedVoiceItems}
+                products={products.map(p => ({ id: p.id, name: p.name, price: p.price }))}
+                showBetaBadge={false}
+              />
               <Badge className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 h-4 border-2 border-white shadow-sm">
                 BETA
               </Badge>
