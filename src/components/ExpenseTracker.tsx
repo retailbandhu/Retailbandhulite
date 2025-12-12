@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Screen } from '../App';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface Expense {
   id: string;

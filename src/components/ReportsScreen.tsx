@@ -4,7 +4,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { Button } from './ui/button';
 import { Screen } from '../App';
 import { Input } from './ui/input';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface ReportsScreenProps {
   onNavigate: (screen: Screen) => void;

@@ -17,7 +17,7 @@ import {
   Gift,
   Users
 } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface LeadCaptureFormProps {
   onSuccess?: (data: any) => void;

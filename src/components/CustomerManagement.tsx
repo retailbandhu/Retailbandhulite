@@ -4,7 +4,7 @@ import { Screen } from '../App';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface Customer {
   id: string;

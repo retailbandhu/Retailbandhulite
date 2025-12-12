@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { logger } from '../utils/logger';
 
 interface DataBackupProps {

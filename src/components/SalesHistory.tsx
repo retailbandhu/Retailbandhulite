@@ -5,7 +5,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Screen } from '../App';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface BillItem {
   id: string;

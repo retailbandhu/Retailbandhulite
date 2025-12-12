@@ -7,7 +7,7 @@ import { Card } from './ui/card';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Alert, AlertDescription } from './ui/alert';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { gstStorage, validateGSTIN, getStateFromGSTIN, type GSTConfig } from '../utils/gst';
 import type { Screen } from '../App';
 

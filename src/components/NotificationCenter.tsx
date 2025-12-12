@@ -3,7 +3,7 @@ import { ArrowLeft, Bell, Package, TrendingUp, AlertCircle, MessageCircle, Check
 import { Screen } from '../App';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface Notification {
   id: string;

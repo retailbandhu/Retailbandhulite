@@ -2,7 +2,7 @@ import { Mail, Phone, MapPin, MessageSquare, Send, Clock, Sparkles } from 'lucid
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { MarketingNavBar } from './MarketingNavBar';
 

@@ -1,8 +1,8 @@
+import React, { useState } from 'react';
 import { ArrowLeft, Store, Bell, Palette, Printer, CreditCard, Globe, ChevronRight, LogOut, Database, Download, Upload, Trash2, Receipt, Award, AlertTriangle, Activity, Shield } from 'lucide-react';
 import { Screen, StoreInfo } from '../App';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner@2.0.3';
-import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface SettingsScreenProps {
   onNavigate: (screen: Screen) => void;
