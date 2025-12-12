@@ -7,11 +7,12 @@ Retail Bandhu Lite is a comprehensive, production-ready Progressive Web App (PWA
 
 ## Current State
 - **Status:** Production-ready with 33 fully functional screens
-- **Stack:** React 18, TypeScript, Vite, Tailwind CSS, Hono API, PostgreSQL
+- **Stack:** React 18, TypeScript, Vite, Tailwind CSS, Express API, PostgreSQL
 - **Data:** PostgreSQL database with Drizzle ORM for persistent cloud storage
 - **PWA:** Fully offline-capable with service worker
-- **Backend:** Hono API server on port 3001
+- **Backend:** Express API server on port 3001 with Replit Auth
 - **Frontend:** Vite dev server on port 5000
+- **Authentication:** Replit OpenID Connect with session management
 
 ## Project Structure
 ```
@@ -31,8 +32,9 @@ retail-bandhu-lite/
 │   ├── App.tsx              # Main router
 │   └── main.tsx             # Entry point
 ├── server/
-│   ├── index.ts             # Hono API server
-│   └── db.ts                # Database connection
+│   ├── index.ts             # Express API server
+│   ├── db.ts                # Database connection
+│   └── replitAuth.ts        # Replit OpenID Connect auth
 ├── shared/
 │   └── schema.ts            # Drizzle database schema
 ├── drizzle.config.ts        # Drizzle ORM config
@@ -61,7 +63,9 @@ retail-bandhu-lite/
 
 ## Database
 PostgreSQL database with Drizzle ORM. Tables:
-- **stores** - Store information and settings
+- **users** - User accounts (via Replit Auth)
+- **sessions** - Session storage for authentication
+- **stores** - Store information and settings (linked to users)
 - **products** - Product inventory
 - **customers** - Customer data with loyalty points
 - **bills** - Sales transactions
@@ -77,8 +81,11 @@ PostgreSQL database with Drizzle ORM. Tables:
 - **Mobile-First:** Designed primarily for mobile usage by shopkeepers
 
 ## Recent Changes
+- Migrated from Hono to Express for better auth middleware support
+- Added Replit OpenID Connect authentication
+- Added users and sessions tables for multi-user support
+- Linked stores to user accounts for data isolation
 - Integrated PostgreSQL database with Drizzle ORM
-- Created Hono API server with full CRUD endpoints
 - Implemented offline-first storage with optimistic updates
 - Added proper foreign key constraints and cascade deletes
 - Fixed TypeScript/React import configuration
@@ -98,6 +105,13 @@ PostgreSQL database with Drizzle ORM. Tables:
 - All components support both English and Hindi
 
 ## API Endpoints
+**Authentication:**
+- `GET /api/login` - Initiate Replit Auth login
+- `GET /api/callback` - OAuth callback handler
+- `GET /api/logout` - End session and logout
+- `GET /api/auth/user` - Get current authenticated user
+
+**Data APIs:**
 - `GET/POST /api/stores/:storeId/products` - Product management
 - `GET/POST /api/stores/:storeId/customers` - Customer management
 - `GET/POST /api/stores/:storeId/bills` - Bill creation

@@ -1,8 +1,9 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb, varchar, index } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
 
 export const stores = pgTable("stores", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   owner: text("owner").notNull(),
   address: text("address"),
@@ -172,3 +173,31 @@ export type Expense = typeof expenses.$inferSelect;
 export type InsertExpense = typeof expenses.$inferInsert;
 export type Party = typeof parties.$inferSelect;
 export type InsertParty = typeof parties.$inferInsert;
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const usersRelations = relations(users, ({ many }) => ({
+  stores: many(stores),
+}));
+
+export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
