@@ -36,7 +36,9 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
   const [showInstallPrompt, setShowInstallPrompt] = useState(true);
   const { content, loading } = useLandingPageContent();
 
-  const handleGetStarted = () => onNavigate('splash');
+  const handleGetStarted = () => {
+    window.location.href = '/api/login';
+  };
   const handleWatchDemo = () => onNavigate('videos');
   const handleLogin = () => {
     window.location.href = '/api/login';

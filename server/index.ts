@@ -15,7 +15,16 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed.replace(/:\d+$/, '')))) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const isAllowed = allowedOrigins.some(allowed => {
+      const normalizedAllowed = allowed.replace(/\/$/, '');
+      return normalizedOrigin === normalizedAllowed;
+    });
+    if (isAllowed) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -37,6 +46,34 @@ app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
   } catch (error) {
     console.error("Error fetching user:", error);
     res.status(500).json({ message: "Failed to fetch user" });
+  }
+});
+
+app.get("/api/my-store", isAuthenticated, async (req: any, res) => {
+  try {
+    const userId = req.user.claims.sub;
+    const user = await getUser(userId);
+    
+    const existingStores = await db.select().from(stores).where(eq(stores.userId, userId));
+    
+    if (existingStores.length > 0) {
+      res.json(existingStores[0]);
+    } else {
+      const [newStore] = await db.insert(stores).values({
+        userId,
+        name: user?.firstName ? `${user.firstName}'s Store` : 'My Kirana Store',
+        owner: user?.firstName && user?.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : user?.email || 'Store Owner',
+        address: '',
+        phone: '',
+        billColor: '#1E88E5',
+      }).returning();
+      res.json(newStore);
+    }
+  } catch (error) {
+    console.error("Error fetching/creating store:", error);
+    res.status(500).json({ message: "Failed to fetch store" });
   }
 });
 

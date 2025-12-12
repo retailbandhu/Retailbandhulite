@@ -113,6 +113,7 @@ PostgreSQL database with Drizzle ORM. Tables:
 - `GET /api/callback` - OAuth callback handler
 - `GET /api/logout` - End session and logout
 - `GET /api/auth/user` - Get current authenticated user
+- `GET /api/my-store` - Get or create store for authenticated user
 
 **Data APIs:**
 - `GET/POST /api/stores/:storeId/products` - Product management
