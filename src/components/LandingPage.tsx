@@ -546,7 +546,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div>
               <h4 className="mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><button onClick={() => onNavigate?.('features')} className="hover:text-white transition-colors">Features</button></li>
+                <li><button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">Features</button></li>
                 <li><button onClick={() => window.scrollTo({ top: document.getElementById('pricing')?.offsetTop || 0, behavior: 'smooth' })} className="hover:text-white transition-colors">Pricing</button></li>
                 <li><button onClick={handleWatchDemo} className="hover:text-white transition-colors">Demo</button></li>
                 <li><button onClick={() => toast.info('🚀 Updates coming soon! Follow us for latest features.')} className="hover:text-white transition-colors">Updates</button></li>
@@ -564,7 +564,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div>
               <h4 className="mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><button onClick={() => onNavigate?.('about')} className="hover:text-white transition-colors">About Us</button></li>
+                <li><button onClick={() => onNavigate?.('about-us')} className="hover:text-white transition-colors">About Us</button></li>
                 <li><button onClick={() => onNavigate?.('blog')} className="hover:text-white transition-colors">Blog</button></li>
                 <li><button onClick={() => onNavigate?.('careers')} className="hover:text-white transition-colors">Careers</button></li>
                 <li><button onClick={() => onNavigate?.('contact')} className="hover:text-white transition-colors">Contact</button></li>
