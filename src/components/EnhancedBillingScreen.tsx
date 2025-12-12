@@ -511,12 +511,12 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
         <Card className="p-4 shadow-sm">
           <Label className="text-xs text-gray-600 mb-2 block flex items-center gap-2">
             <Search className="w-4 h-4" />
-            Quick Search Product
+            Product Search (Product Dhundein)
           </Label>
           <div className="relative">
             <Input
               type="text"
-              placeholder="Type product name..."
+              placeholder="Product ka naam likho... (e.g. Maggi, Doodh)"
               value={productSearch}
               onChange={(e) => {
                 setProductSearch(e.target.value);
@@ -555,7 +555,7 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
           <Card className="p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="w-4 h-4 text-orange-500" />
-              <Label className="text-xs text-gray-600">Fast-Moving Items</Label>
+              <Label className="text-xs text-gray-600">Fast-Moving Items (Tez Bikne Wale)</Label>
             </div>
             <div className="flex flex-wrap gap-2">
               {topProducts.slice(0, 6).map((product) => (
