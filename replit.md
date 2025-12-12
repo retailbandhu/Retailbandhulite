@@ -96,6 +96,9 @@ PostgreSQL database with Drizzle ORM. Tables:
 - Created useAuth hook for frontend authentication state
 - Added automatic store creation for new users
 - Synced auth state between backend session and frontend
+- Added logout button to Dashboard header
+- Fixed OAuth redirect URI by adding proper domain detection (getDomain function)
+- Cleaned up unnecessary documentation files from src directory
 
 ## User Preferences
 - Hinglish interface (mix of Hindi and English)
