@@ -7,9 +7,11 @@ Retail Bandhu Lite is a comprehensive, production-ready Progressive Web App (PWA
 
 ## Current State
 - **Status:** Production-ready with 33 fully functional screens
-- **Stack:** React 18, TypeScript, Vite, Tailwind CSS
-- **Data:** LocalStorage for persistence, Supabase config ready for cloud sync
+- **Stack:** React 18, TypeScript, Vite, Tailwind CSS, Hono API, PostgreSQL
+- **Data:** PostgreSQL database with Drizzle ORM for persistent cloud storage
 - **PWA:** Fully offline-capable with service worker
+- **Backend:** Hono API server on port 3001
+- **Frontend:** Vite dev server on port 5000
 
 ## Project Structure
 ```
@@ -19,20 +21,21 @@ retail-bandhu-lite/
 │   │   ├── ui/              # 45+ Reusable shadcn/ui Components
 │   │   ├── Dashboard.tsx    # Main dashboard
 │   │   ├── EnhancedBillingScreen.tsx  # Voice billing
-│   │   ├── InventoryScreen.tsx
-│   │   ├── CustomerManagement.tsx
-│   │   ├── KhataManagement.tsx   # Credit ledger
-│   │   ├── ReportsScreen.tsx
-│   │   └── ... (25+ more screens)
+│   │   └── ... (30+ more screens)
 │   ├── utils/
 │   │   ├── storage.ts       # LocalStorage management
+│   │   ├── api.ts           # API client for database
 │   │   ├── gst.ts           # GST calculations
 │   │   ├── loyalty.ts       # Loyalty program logic
-│   │   ├── export.ts        # Data export utilities
 │   │   └── translations.ts  # Multi-language support
-│   ├── supabase/            # Supabase functions (ready)
 │   ├── App.tsx              # Main router
 │   └── main.tsx             # Entry point
+├── server/
+│   ├── index.ts             # Hono API server
+│   └── db.ts                # Database connection
+├── shared/
+│   └── schema.ts            # Drizzle database schema
+├── drizzle.config.ts        # Drizzle ORM config
 ├── vite.config.ts           # Vite configuration
 └── package.json             # Dependencies
 ```
@@ -50,9 +53,21 @@ retail-bandhu-lite/
 10. **Multi-language** - English, Hindi, Hinglish support
 
 ## Running the App
-- **Development:** `npm run dev` (runs on port 5000)
+- **Frontend:** `npm run dev` (runs on port 5000)
+- **Backend:** `npm run server` (runs on port 3001)
 - **Build:** `npm run build` (outputs to /build)
+- **Database:** `npm run db:push` (sync schema to PostgreSQL)
 - **Deployment:** Static deployment configured
+
+## Database
+PostgreSQL database with Drizzle ORM. Tables:
+- **stores** - Store information and settings
+- **products** - Product inventory
+- **customers** - Customer data with loyalty points
+- **bills** - Sales transactions
+- **khata_entries** - Credit/debit ledger
+- **expenses** - Business expenses
+- **parties** - Suppliers and vendors
 
 ## Architecture Decisions
 - **LocalStorage First:** All data stored locally for offline-first experience
