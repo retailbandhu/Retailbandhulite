@@ -81,6 +81,10 @@ PostgreSQL database with Drizzle ORM. Tables:
 - **Mobile-First:** Designed primarily for mobile usage by shopkeepers
 
 ## Recent Changes
+- **Code-splitting implemented**: React.lazy loading for 35+ components, reducing initial bundle from 1,371KB to 256KB (81% reduction)
+- **Real voice billing**: Web Speech API with Hinglish support (en-IN, hi-IN languages), intelligent fuzzy product matching
+- **Security hardened**: requireStoreAccess middleware and verifyStoreOwnership on all API routes
+- **Data sync on login**: Automatic server sync for products, customers, bills, khata, expenses, parties
 - Migrated from Hono to Express for better auth middleware support
 - Added Replit OpenID Connect authentication
 - Added users and sessions tables for multi-user support
