@@ -220,9 +220,10 @@ export const storage = {
       products[index] = { ...products[index], ...updates };
       storage.setProducts(products);
     }
-    if (!isLocalId(id) && getStoreId()) {
+    const storeId = getStoreId();
+    if (!isLocalId(id) && storeId) {
       try {
-        await api.updateProduct(parseInt(id), {
+        await api.updateProduct(storeId, parseInt(id), {
           ...updates,
           price: updates.price?.toString(),
           gstRate: updates.gstRate?.toString(),
@@ -235,9 +236,10 @@ export const storage = {
   deleteProduct: async (id: string): Promise<boolean> => {
     const products = storage.getProducts().filter(p => p.id !== id);
     storage.setProducts(products);
-    if (!isLocalId(id) && getStoreId()) {
+    const storeId = getStoreId();
+    if (!isLocalId(id) && storeId) {
       try {
-        await api.deleteProduct(parseInt(id));
+        await api.deleteProduct(storeId, parseInt(id));
       } catch {}
     }
     return true;
@@ -353,9 +355,10 @@ export const storage = {
       customers[index] = { ...customers[index], ...updates };
       storage.setCustomers(customers);
     }
-    if (!isLocalId(id) && getStoreId()) {
+    const storeId = getStoreId();
+    if (!isLocalId(id) && storeId) {
       try {
-        await api.updateCustomer(parseInt(id), {
+        await api.updateCustomer(storeId, parseInt(id), {
           ...updates,
           totalPurchases: updates.totalPurchases?.toString(),
         });

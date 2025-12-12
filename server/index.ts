@@ -1,12 +1,87 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import path from "path";
 import { db } from "./db";
 import { stores, products, customers, bills, khataEntries, expenses, parties } from "../shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { setupAuth, isAuthenticated, getUser } from "./replitAuth";
 
 const app = express();
+
+// Middleware to verify user owns the store they're accessing
+async function verifyStoreOwnership(req: Request, res: Response, next: NextFunction) {
+  try {
+    const storeId = parseInt(req.params.storeId || req.params.id);
+    if (isNaN(storeId)) {
+      return res.status(400).json({ error: "Invalid store ID" });
+    }
+    
+    const userId = (req as any).user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    const [store] = await db.select().from(stores).where(
+      and(eq(stores.id, storeId), eq(stores.userId, userId))
+    );
+    
+    if (!store) {
+      return res.status(403).json({ error: "Access denied: You don't own this store" });
+    }
+    
+    // Attach store to request for use in route handlers
+    (req as any).store = store;
+    next();
+  } catch (error) {
+    console.error("Store ownership verification error:", error);
+    res.status(500).json({ error: "Authorization check failed" });
+  }
+}
+
+// Combined middleware for auth + store ownership
+const requireStoreAccess = [isAuthenticated, verifyStoreOwnership];
+
+// Middleware to verify ownership of a resource (product, customer, etc.) via its store
+async function verifyResourceOwnership(
+  resourceTable: any,
+  resourceIdParam: string = 'id'
+) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const resourceId = parseInt(req.params[resourceIdParam]);
+      if (isNaN(resourceId)) {
+        return res.status(400).json({ error: "Invalid resource ID" });
+      }
+      
+      const userId = (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      // Get the resource to find its storeId
+      const [resource] = await db.select().from(resourceTable).where(eq(resourceTable.id, resourceId));
+      if (!resource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+      
+      // Verify the store belongs to the user
+      const [store] = await db.select().from(stores).where(
+        and(eq(stores.id, resource.storeId), eq(stores.userId, userId))
+      );
+      
+      if (!store) {
+        return res.status(403).json({ error: "Access denied: You don't own this resource" });
+      }
+      
+      (req as any).store = store;
+      (req as any).resource = resource;
+      next();
+    } catch (error) {
+      console.error("Resource ownership verification error:", error);
+      res.status(500).json({ error: "Authorization check failed" });
+    }
+  };
+}
 
 const allowedOrigins = [
   process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
@@ -79,40 +154,15 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: "Invalid store ID" });
-      const [store] = await db.select().from(stores).where(eq(stores.id, id));
-      if (!store) return res.status(404).json({ error: "Store not found" });
-      res.json(store);
-    } catch (error) {
-      console.error('Error fetching store:', error);
-      res.status(500).json({ error: "Failed to fetch store" });
-    }
+  // Store routes - require authentication and ownership
+  app.get("/api/stores/:id", requireStoreAccess, async (req: any, res) => {
+    res.json(req.store);
   });
 
-  app.post("/api/stores", async (req, res) => {
+  app.put("/api/stores/:id", requireStoreAccess, async (req: any, res) => {
     try {
       const body = req.body;
-      if (!body.name || !body.owner) {
-        return res.status(400).json({ error: "Name and owner are required" });
-      }
-      const [store] = await db.insert(stores).values(body).returning();
-      res.status(201).json(store);
-    } catch (error) {
-      console.error('Error creating store:', error);
-      res.status(500).json({ error: "Failed to create store" });
-    }
-  });
-
-  app.put("/api/stores/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ error: "Invalid store ID" });
-      const body = req.body;
-      const [store] = await db.update(stores).set(body).where(eq(stores.id, id)).returning();
-      if (!store) return res.status(404).json({ error: "Store not found" });
+      const [store] = await db.update(stores).set(body).where(eq(stores.id, req.store.id)).returning();
       res.json(store);
     } catch (error) {
       console.error('Error updating store:', error);
@@ -120,11 +170,10 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:storeId/products", async (req, res) => {
+  // Product routes - require store ownership
+  app.get("/api/stores/:storeId/products", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
-      const result = await db.select().from(products).where(eq(products.storeId, storeId));
+      const result = await db.select().from(products).where(eq(products.storeId, req.store.id));
       res.json(result);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -132,15 +181,13 @@ function registerRoutes() {
     }
   });
 
-  app.post("/api/stores/:storeId/products", async (req, res) => {
+  app.post("/api/stores/:storeId/products", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
       const body = req.body;
       if (!body.name || !body.price) {
         return res.status(400).json({ error: "Name and price are required" });
       }
-      const [product] = await db.insert(products).values({ ...body, storeId }).returning();
+      const [product] = await db.insert(products).values({ ...body, storeId: req.store.id }).returning();
       res.status(201).json(product);
     } catch (error) {
       console.error('Error creating product:', error);
@@ -148,13 +195,19 @@ function registerRoutes() {
     }
   });
 
-  app.put("/api/products/:id", async (req, res) => {
+  app.put("/api/stores/:storeId/products/:id", requireStoreAccess, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid product ID" });
+      
+      // Verify product belongs to this store
+      const [existing] = await db.select().from(products).where(
+        and(eq(products.id, id), eq(products.storeId, req.store.id))
+      );
+      if (!existing) return res.status(404).json({ error: "Product not found" });
+      
       const body = req.body;
       const [product] = await db.update(products).set(body).where(eq(products.id, id)).returning();
-      if (!product) return res.status(404).json({ error: "Product not found" });
       res.json(product);
     } catch (error) {
       console.error('Error updating product:', error);
@@ -162,10 +215,17 @@ function registerRoutes() {
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/stores/:storeId/products/:id", requireStoreAccess, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid product ID" });
+      
+      // Verify product belongs to this store
+      const [existing] = await db.select().from(products).where(
+        and(eq(products.id, id), eq(products.storeId, req.store.id))
+      );
+      if (!existing) return res.status(404).json({ error: "Product not found" });
+      
       await db.delete(products).where(eq(products.id, id));
       res.json({ success: true });
     } catch (error) {
@@ -174,11 +234,10 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:storeId/customers", async (req, res) => {
+  // Customer routes - require store ownership
+  app.get("/api/stores/:storeId/customers", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
-      const result = await db.select().from(customers).where(eq(customers.storeId, storeId));
+      const result = await db.select().from(customers).where(eq(customers.storeId, req.store.id));
       res.json(result);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -186,15 +245,13 @@ function registerRoutes() {
     }
   });
 
-  app.post("/api/stores/:storeId/customers", async (req, res) => {
+  app.post("/api/stores/:storeId/customers", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
       const body = req.body;
       if (!body.name) {
         return res.status(400).json({ error: "Customer name is required" });
       }
-      const [customer] = await db.insert(customers).values({ ...body, storeId }).returning();
+      const [customer] = await db.insert(customers).values({ ...body, storeId: req.store.id }).returning();
       res.status(201).json(customer);
     } catch (error) {
       console.error('Error creating customer:', error);
@@ -202,13 +259,18 @@ function registerRoutes() {
     }
   });
 
-  app.put("/api/customers/:id", async (req, res) => {
+  app.put("/api/stores/:storeId/customers/:id", requireStoreAccess, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid customer ID" });
+      
+      const [existing] = await db.select().from(customers).where(
+        and(eq(customers.id, id), eq(customers.storeId, req.store.id))
+      );
+      if (!existing) return res.status(404).json({ error: "Customer not found" });
+      
       const body = req.body;
       const [customer] = await db.update(customers).set(body).where(eq(customers.id, id)).returning();
-      if (!customer) return res.status(404).json({ error: "Customer not found" });
       res.json(customer);
     } catch (error) {
       console.error('Error updating customer:', error);
@@ -216,10 +278,16 @@ function registerRoutes() {
     }
   });
 
-  app.delete("/api/customers/:id", async (req, res) => {
+  app.delete("/api/stores/:storeId/customers/:id", requireStoreAccess, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid customer ID" });
+      
+      const [existing] = await db.select().from(customers).where(
+        and(eq(customers.id, id), eq(customers.storeId, req.store.id))
+      );
+      if (!existing) return res.status(404).json({ error: "Customer not found" });
+      
       await db.delete(customers).where(eq(customers.id, id));
       res.json({ success: true });
     } catch (error) {
@@ -228,11 +296,10 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:storeId/bills", async (req, res) => {
+  // Bill routes - require store ownership
+  app.get("/api/stores/:storeId/bills", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
-      const result = await db.select().from(bills).where(eq(bills.storeId, storeId)).orderBy(desc(bills.createdAt));
+      const result = await db.select().from(bills).where(eq(bills.storeId, req.store.id)).orderBy(desc(bills.createdAt));
       res.json(result);
     } catch (error) {
       console.error('Error fetching bills:', error);
@@ -240,15 +307,13 @@ function registerRoutes() {
     }
   });
 
-  app.post("/api/stores/:storeId/bills", async (req, res) => {
+  app.post("/api/stores/:storeId/bills", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
       const body = req.body;
       if (!body.billNumber || !body.items || !body.subtotal || !body.total) {
         return res.status(400).json({ error: "Bill number, items, subtotal and total are required" });
       }
-      const [bill] = await db.insert(bills).values({ ...body, storeId }).returning();
+      const [bill] = await db.insert(bills).values({ ...body, storeId: req.store.id }).returning();
       res.status(201).json(bill);
     } catch (error) {
       console.error('Error creating bill:', error);
@@ -256,11 +321,10 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:storeId/khata", async (req, res) => {
+  // Khata (credit ledger) routes - require store ownership
+  app.get("/api/stores/:storeId/khata", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
-      const result = await db.select().from(khataEntries).where(eq(khataEntries.storeId, storeId)).orderBy(desc(khataEntries.createdAt));
+      const result = await db.select().from(khataEntries).where(eq(khataEntries.storeId, req.store.id)).orderBy(desc(khataEntries.createdAt));
       res.json(result);
     } catch (error) {
       console.error('Error fetching khata:', error);
@@ -268,15 +332,13 @@ function registerRoutes() {
     }
   });
 
-  app.post("/api/stores/:storeId/khata", async (req, res) => {
+  app.post("/api/stores/:storeId/khata", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
       const body = req.body;
       if (!body.customerName || !body.amount || !body.type) {
         return res.status(400).json({ error: "Customer name, amount and type are required" });
       }
-      const [entry] = await db.insert(khataEntries).values({ ...body, storeId }).returning();
+      const [entry] = await db.insert(khataEntries).values({ ...body, storeId: req.store.id }).returning();
       res.status(201).json(entry);
     } catch (error) {
       console.error('Error creating khata entry:', error);
@@ -284,11 +346,10 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:storeId/expenses", async (req, res) => {
+  // Expense routes - require store ownership
+  app.get("/api/stores/:storeId/expenses", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
-      const result = await db.select().from(expenses).where(eq(expenses.storeId, storeId)).orderBy(desc(expenses.createdAt));
+      const result = await db.select().from(expenses).where(eq(expenses.storeId, req.store.id)).orderBy(desc(expenses.createdAt));
       res.json(result);
     } catch (error) {
       console.error('Error fetching expenses:', error);
@@ -296,15 +357,13 @@ function registerRoutes() {
     }
   });
 
-  app.post("/api/stores/:storeId/expenses", async (req, res) => {
+  app.post("/api/stores/:storeId/expenses", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
       const body = req.body;
       if (!body.category || !body.amount) {
         return res.status(400).json({ error: "Category and amount are required" });
       }
-      const [expense] = await db.insert(expenses).values({ ...body, storeId }).returning();
+      const [expense] = await db.insert(expenses).values({ ...body, storeId: req.store.id }).returning();
       res.status(201).json(expense);
     } catch (error) {
       console.error('Error creating expense:', error);
@@ -312,11 +371,10 @@ function registerRoutes() {
     }
   });
 
-  app.get("/api/stores/:storeId/parties", async (req, res) => {
+  // Party (supplier) routes - require store ownership
+  app.get("/api/stores/:storeId/parties", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
-      const result = await db.select().from(parties).where(eq(parties.storeId, storeId));
+      const result = await db.select().from(parties).where(eq(parties.storeId, req.store.id));
       res.json(result);
     } catch (error) {
       console.error('Error fetching parties:', error);
@@ -324,15 +382,13 @@ function registerRoutes() {
     }
   });
 
-  app.post("/api/stores/:storeId/parties", async (req, res) => {
+  app.post("/api/stores/:storeId/parties", requireStoreAccess, async (req: any, res) => {
     try {
-      const storeId = parseInt(req.params.storeId);
-      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
       const body = req.body;
       if (!body.name) {
         return res.status(400).json({ error: "Party name is required" });
       }
-      const [party] = await db.insert(parties).values({ ...body, storeId }).returning();
+      const [party] = await db.insert(parties).values({ ...body, storeId: req.store.id }).returning();
       res.status(201).json(party);
     } catch (error) {
       console.error('Error creating party:', error);

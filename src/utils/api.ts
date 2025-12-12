@@ -4,6 +4,7 @@ const API_BASE = (import.meta as any).env?.PROD ? '/api' : 'http://localhost:300
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -37,12 +38,12 @@ export const api = {
     body: JSON.stringify(data),
   }),
   
-  updateProduct: (id: number, data: any) => fetchApi(`/products/${id}`, {
+  updateProduct: (storeId: number, id: number, data: any) => fetchApi(`/stores/${storeId}/products/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
   
-  deleteProduct: (id: number) => fetchApi(`/products/${id}`, {
+  deleteProduct: (storeId: number, id: number) => fetchApi(`/stores/${storeId}/products/${id}`, {
     method: 'DELETE',
   }),
   
@@ -53,12 +54,12 @@ export const api = {
     body: JSON.stringify(data),
   }),
   
-  updateCustomer: (id: number, data: any) => fetchApi(`/customers/${id}`, {
+  updateCustomer: (storeId: number, id: number, data: any) => fetchApi(`/stores/${storeId}/customers/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
   
-  deleteCustomer: (id: number) => fetchApi(`/customers/${id}`, {
+  deleteCustomer: (storeId: number, id: number) => fetchApi(`/stores/${storeId}/customers/${id}`, {
     method: 'DELETE',
   }),
   
