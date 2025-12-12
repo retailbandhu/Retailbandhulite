@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { db } from "./db";
 import { stores, products, customers, bills, khataEntries, expenses, parties } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -340,12 +341,28 @@ function registerRoutes() {
   });
 }
 
-const port = 3001;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 async function startServer() {
   await setupAuth(app);
   registerRoutes();
-  app.listen(port, () => {
+  
+  // Serve static files in production
+  const buildPath = path.resolve(process.cwd(), "build");
+  app.use(express.static(buildPath));
+  
+  // Handle client-side routing - serve index.html for all non-API routes
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api") && req.method === "GET") {
+      res.sendFile(path.join(buildPath, "index.html"), (err) => {
+        if (err) next();
+      });
+    } else {
+      next();
+    }
+  });
+  
+  app.listen(port, "0.0.0.0", () => {
     console.log(`API Server running on port ${port}`);
   });
 }
