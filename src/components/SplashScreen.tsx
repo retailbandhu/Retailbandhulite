@@ -1,3 +1,4 @@
+import React from 'react';
 import bandhuMascot from '@assets/retail_bandhu_logo.png';
 
 export function SplashScreen() {

@@ -1,4 +1,5 @@
-import image_4d93b3d1b087e58174e0c66cc9a52e892bfab633 from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
+import React from 'react';
+import image_4d93b3d1b087e58174e0c66cc9a52e892bfab633 from '@assets/retail_bandhu_logo.png';
 import { 
   Mic, 
   Package, 
