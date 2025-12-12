@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.PROD ? '/api' : 'http://localhost:3001/api';
+/// <reference types="vite/client" />
+const API_BASE = (import.meta as any).env?.PROD ? '/api' : 'http://localhost:3001/api';
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {

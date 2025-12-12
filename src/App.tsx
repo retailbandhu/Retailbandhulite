@@ -88,6 +88,9 @@ export interface Product {
   stock: number;
   category: string;
   image?: string;
+  barcode?: string;
+  hsnCode?: string;
+  gstRate?: number;
 }
 
 export interface BillItem {
@@ -99,12 +102,14 @@ export interface BillItem {
 }
 
 export interface StoreInfo {
+  id?: string;
   name: string;
   owner: string;
   address: string;
   phone: string;
   logo?: string;
-  billColor: string;
+  billColor?: string;
+  gstin?: string;
 }
 
 function App() {
