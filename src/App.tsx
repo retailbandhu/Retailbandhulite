@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MarketingHub } from './components/MarketingHub';
 import { SplashScreen } from './components/SplashScreen';
