@@ -16,7 +16,8 @@ import {
   Building2, 
   AlertTriangle, 
   MessageCircle, 
-  Plus 
+  Plus,
+  LogOut
 } from 'lucide-react';
 import { Screen, StoreInfo, Product } from '../App';
 import { storage } from '../utils/storage';
@@ -28,9 +29,10 @@ interface DashboardProps {
   onToggleAI?: () => void;
   onToggleQuickActions?: () => void;
   products?: Product[];
+  onLogout?: () => void;
 }
 
-export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActions, products: productsProp }: DashboardProps) {
+export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActions, products: productsProp, onLogout }: DashboardProps) {
   const [lowStockCount, setLowStockCount] = useState(0);
   const [todaySales, setTodaySales] = useState(0);
   const [todayBills, setTodayBills] = useState(0);
