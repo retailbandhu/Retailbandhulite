@@ -22,6 +22,7 @@ import {
 import { Screen, StoreInfo, Product } from '../App';
 import { storage } from '../utils/storage';
 import { useState, useEffect } from 'react';
+import { SyncStatus } from './SyncStatus';
 
 interface DashboardProps {
   onNavigate: (screen: Screen) => void;
@@ -128,7 +129,10 @@ export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActi
             </div>
             <div>
               <h1 className="text-white text-lg">{storeInfo.name}</h1>
-              <p className="text-white/80 text-sm">{storeInfo.owner}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-white/80 text-sm">{storeInfo.owner}</p>
+                <div className="bg-white/20 px-2 py-0.5 rounded text-white"><SyncStatus /></div>
+              </div>
             </div>
           </div>
           <div className="flex space-x-2">

@@ -1,5 +1,8 @@
 import { Product, StoreInfo, BillItem } from '../App';
 import { api } from './api';
+import { addToSyncQueue, initSyncListener } from './syncQueue';
+
+initSyncListener();
 
 export interface Customer {
   id: string;
@@ -208,7 +211,14 @@ export const storage = {
         updatedProducts.push(serverProduct);
         storage.setProducts(updatedProducts);
         return serverProduct;
-      } catch {}
+      } catch {
+        addToSyncQueue({
+          id: localProduct.id,
+          type: 'product',
+          action: 'create',
+          data: localProduct,
+        });
+      }
     }
     return localProduct;
   },
@@ -343,7 +353,14 @@ export const storage = {
         updatedCustomers.push(serverCustomer);
         storage.setCustomers(updatedCustomers);
         return serverCustomer;
-      } catch {}
+      } catch {
+        addToSyncQueue({
+          id: localCustomer.id,
+          type: 'customer',
+          action: 'create',
+          data: localCustomer,
+        });
+      }
     }
     return localCustomer;
   },
@@ -417,7 +434,14 @@ export const storage = {
         updatedBills.unshift(serverBill);
         storage.setBills(updatedBills);
         return serverBill;
-      } catch {}
+      } catch {
+        addToSyncQueue({
+          id: localBill.id,
+          type: 'bill',
+          action: 'create',
+          data: localBill,
+        });
+      }
     }
     return localBill;
   },
@@ -470,7 +494,14 @@ export const storage = {
         updatedEntries.unshift(serverEntry);
         storage.setKhataEntries(updatedEntries);
         return serverEntry;
-      } catch {}
+      } catch {
+        addToSyncQueue({
+          id: localEntry.id,
+          type: 'khata',
+          action: 'create',
+          data: localEntry,
+        });
+      }
     }
     return localEntry;
   },
@@ -520,7 +551,14 @@ export const storage = {
         updatedExpenses.unshift(serverExpense);
         storage.setExpenses(updatedExpenses);
         return serverExpense;
-      } catch {}
+      } catch {
+        addToSyncQueue({
+          id: localExpense.id,
+          type: 'expense',
+          action: 'create',
+          data: localExpense,
+        });
+      }
     }
     return localExpense;
   },
@@ -570,7 +608,14 @@ export const storage = {
         updatedParties.push(serverParty);
         storage.setParties(updatedParties);
         return serverParty;
-      } catch {}
+      } catch {
+        addToSyncQueue({
+          id: localParty.id,
+          type: 'party',
+          action: 'create',
+          data: localParty,
+        });
+      }
     }
     return localParty;
   },

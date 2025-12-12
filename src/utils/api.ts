@@ -19,6 +19,20 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 export const api = {
+  post: <T>(endpoint: string, data: any) => fetchApi<T>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  put: <T>(endpoint: string, data: any) => fetchApi<T>(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  
+  delete: <T>(endpoint: string) => fetchApi<T>(endpoint, {
+    method: 'DELETE',
+  }),
+  
   getStore: (id: number) => fetchApi(`/stores/${id}`),
   
   createStore: (data: any) => fetchApi('/stores', {
