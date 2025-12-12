@@ -1,4 +1,4 @@
-import bandhuMascot from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
+import bandhuMascot from '@assets/retail_bandhu_logo.png';
 
 export function SplashScreen() {
   return (

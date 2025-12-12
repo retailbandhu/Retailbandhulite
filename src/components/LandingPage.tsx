@@ -7,7 +7,7 @@ import { PWAInstallPrompt } from './PWAInstallPrompt';
 import { toast } from 'sonner';
 import { useLandingPageContent } from '../hooks/useAdminContent';
 import { Screen } from '../App';
-import bandhuMascot from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
+import bandhuMascot from '@assets/retail_bandhu_logo.png';
 import { 
   Mic, 
   MessageSquare, 
