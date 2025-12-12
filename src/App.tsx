@@ -40,6 +40,7 @@ import { GlobalSearch, useGlobalSearchShortcut } from './components/GlobalSearch
 import { KeyboardShortcuts, useKeyboardShortcutsHelp } from './components/KeyboardShortcuts';
 import { storage } from './utils/storage';
 import { Toaster } from './components/ui/sonner';
+import { useAuth } from './hooks/useAuth';
 
 export type Screen = 
   | 'marketing'
@@ -113,6 +114,7 @@ export interface StoreInfo {
 }
 
 function App() {
+  const { user, store, loading: authLoading, logout } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('marketing');
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -131,6 +133,31 @@ function App() {
     phone: '+91 98765 43210',
     billColor: '#1E88E5'
   });
+  
+  // Sync auth state with app state
+  useEffect(() => {
+    if (!authLoading && user && store) {
+      setIsLoggedIn(true);
+      storage.setLoggedIn(true);
+      setStoreInfo({
+        id: String(store.id),
+        name: store.name,
+        owner: store.owner,
+        address: store.address || '',
+        phone: store.phone || '',
+        logo: store.logo || undefined,
+        billColor: store.billColor || '#1E88E5',
+        gstin: store.gstin || undefined,
+      });
+      if (store.address && store.phone) {
+        setStoreSetup(true);
+        storage.setStoreSetupDone(true);
+      }
+      if (currentScreen === 'marketing' || currentScreen === 'login') {
+        setCurrentScreen(store.address && store.phone ? 'dashboard' : 'store-setup');
+      }
+    }
+  }, [authLoading, user, store]);
 
   const [currentBill, setCurrentBill] = useState<BillItem[]>([]);
   const [products, setProducts] = useState<Product[]>([
