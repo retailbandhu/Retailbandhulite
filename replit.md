@@ -93,6 +93,9 @@ PostgreSQL database with Drizzle ORM. Tables:
 - Added Vite proxy for /api requests to backend on port 3001
 - Implemented secure CORS with origin allowlist
 - Required SESSION_SECRET environment variable for security
+- Created useAuth hook for frontend authentication state
+- Added automatic store creation for new users
+- Synced auth state between backend session and frontend
 
 ## User Preferences
 - Hinglish interface (mix of Hindi and English)

@@ -136,7 +136,9 @@ function App() {
   
   // Sync auth state with app state
   useEffect(() => {
-    if (!authLoading && user && store) {
+    if (authLoading) return;
+    
+    if (user && store) {
       setIsLoggedIn(true);
       storage.setLoggedIn(true);
       setStoreInfo({
@@ -149,13 +151,18 @@ function App() {
         billColor: store.billColor || '#1E88E5',
         gstin: store.gstin || undefined,
       });
-      if (store.address && store.phone) {
-        setStoreSetup(true);
+      const isStoreComplete = !!(store.address && store.phone);
+      setStoreSetup(isStoreComplete);
+      if (isStoreComplete) {
         storage.setStoreSetupDone(true);
       }
       if (currentScreen === 'marketing' || currentScreen === 'login') {
-        setCurrentScreen(store.address && store.phone ? 'dashboard' : 'store-setup');
+        setCurrentScreen(isStoreComplete ? 'dashboard' : 'store-setup');
       }
+    } else {
+      // User not authenticated - clear local state
+      setIsLoggedIn(false);
+      storage.setLoggedIn(false);
     }
   }, [authLoading, user, store]);
 
@@ -172,17 +179,13 @@ function App() {
   useGlobalSearchShortcut(() => setShowGlobalSearch(true));
   useKeyboardShortcutsHelp(() => setShowKeyboardShortcuts(true));
 
-  // Load persisted data on app start
+  // Load persisted data on app start (except login state - that comes from useAuth)
   useEffect(() => {
     const savedOnboarding = !storage.getOnboardingDone();
-    const savedLogin = storage.getLoggedIn();
-    const savedStoreSetup = storage.getStoreSetupDone();
     const savedStoreInfo = storage.getStoreInfo();
     const savedProducts = storage.getProducts();
 
     setShowOnboarding(savedOnboarding);
-    setIsLoggedIn(savedLogin);
-    setStoreSetup(savedStoreSetup);
 
     if (savedStoreInfo) {
       setStoreInfo(savedStoreInfo);
@@ -191,7 +194,6 @@ function App() {
     if (savedProducts.length > 0) {
       setProducts(savedProducts);
     } else {
-      // Save default products on first load
       storage.setProducts(products);
     }
   }, []);
