@@ -70,15 +70,19 @@ PostgreSQL database with Drizzle ORM. Tables:
 - **parties** - Suppliers and vendors
 
 ## Architecture Decisions
-- **LocalStorage First:** All data stored locally for offline-first experience
-- **Supabase Ready:** Configuration in place for cloud sync when needed
+- **Offline-First with Cloud Sync:** Optimistic UI updates with PostgreSQL backend
+- **Hybrid Storage:** Local cache for instant feedback, API sync when online
+- **Local ID Prefix:** Records created offline use 'local_' prefix until synced
 - **Component Library:** shadcn/ui + Radix for accessible, beautiful UI
 - **Mobile-First:** Designed primarily for mobile usage by shopkeepers
 
 ## Recent Changes
+- Integrated PostgreSQL database with Drizzle ORM
+- Created Hono API server with full CRUD endpoints
+- Implemented offline-first storage with optimistic updates
+- Added proper foreign key constraints and cascade deletes
 - Fixed TypeScript/React import configuration
 - Configured Vite for Replit environment (port 5000, allowedHosts)
-- Set up static deployment configuration
 
 ## User Preferences
 - Hinglish interface (mix of Hindi and English)
@@ -87,7 +91,17 @@ PostgreSQL database with Drizzle ORM. Tables:
 - WhatsApp integration for customer communication
 
 ## Development Notes
-- The app uses localStorage for demo/offline functionality
-- Supabase credentials are in `src/utils/supabase/info.tsx`
+- Storage layer provides optimistic updates for instant UI feedback
+- API failures fallback to local-only records (preserved on sync)
+- Database schema uses NOT NULL on foreign keys with cascade deletes
 - PWA manifest and service worker in `src/public/`
 - All components support both English and Hindi
+
+## API Endpoints
+- `GET/POST /api/stores/:storeId/products` - Product management
+- `GET/POST /api/stores/:storeId/customers` - Customer management
+- `GET/POST /api/stores/:storeId/bills` - Bill creation
+- `GET/POST /api/stores/:storeId/khata` - Credit ledger
+- `GET/POST /api/stores/:storeId/expenses` - Expense tracking
+- `GET/POST /api/stores/:storeId/parties` - Supplier management
+- `GET /api/health` - API health check
