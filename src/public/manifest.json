@@ -1,0 +1,75 @@
+{
+  "name": "Retail Bandhu Lite - Voice & AI Billing App",
+  "short_name": "Retail Bandhu",
+  "description": "Voice + AI Billing App for small retailers and kiranas in India with WhatsApp integration",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1E88E5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.png",
+      "sizes": "1080x1920",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Bill",
+      "short_name": "Bill",
+      "description": "Create a new bill",
+      "url": "/billing",
+      "icons": [
+        {
+          "src": "/icon-bill.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Quick POS",
+      "short_name": "POS",
+      "description": "Quick point of sale",
+      "url": "/quick-pos",
+      "icons": [
+        {
+          "src": "/icon-pos.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Stock",
+      "description": "Manage inventory",
+      "url": "/inventory",
+      "icons": [
+        {
+          "src": "/icon-inventory.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
+}

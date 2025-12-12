@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Retail Bandhu Lite - Voice + AI Billing App for Indian Kirana Stores">
+  <meta name="theme-color" content="#1E88E5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Retail Bandhu">
+  
+  <!-- Open Graph / Social Media Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Retail Bandhu Lite - Voice AI Billing">
+  <meta property="og:description" content="Complete billing solution for Indian retailers with voice input, inventory management, and WhatsApp integration">
+  <meta property="og:image" content="/og-image.png">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Favicons - Bandhu Mascot -->
+  <link rel="icon" type="image/png" sizes="32x32" href="figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png">
+  <link rel="mask-icon" href="figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png" color="#1E88E5">
+  <meta name="msapplication-TileColor" content="#1E88E5">
+  <meta name="msapplication-TileImage" content="figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png">
+  
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://images.unsplash.com">
+  
+  <title>Retail Bandhu Lite - Voice AI Billing</title>
+  
+  <style>
+    /* Loading Screen */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1E88E5 0%, #FF6F00 100%);
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    }
+    
+    #loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loader {
+      width: 80px;
+      height: 80px;
+      border: 8px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      color: white;
+      margin-top: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+    }
+    
+    /* Install Prompt */
+    #install-prompt {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      display: none;
+      z-index: 1000;
+      animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes slideUp {
+      from {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    #install-prompt.show {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .install-icon {
+      font-size: 32px;
+    }
+    
+    .install-content {
+      flex: 1;
+    }
+    
+    .install-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .install-text {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .install-button {
+      background: linear-gradient(135deg, #1E88E5 0%, #FF6F00 100%);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    
+    .close-button {
+      background: transparent;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loader"></div>
+    <div class="loading-text">Retail Bandhu Loading...</div>
+  </div>
+  
+  <!-- Install Prompt -->
+  <div id="install-prompt">
+    <div class="install-icon">🏪</div>
+    <div class="install-content">
+      <div class="install-title">Install Retail Bandhu</div>
+      <div class="install-text">Get the full app experience!</div>
+    </div>
+    <button id="install-button" class="install-button">Install</button>
+    <button id="close-prompt" class="close-button">×</button>
+  </div>
+  
+  <!-- App Root -->
+  <div id="root"></div>
+  
+  <script type="module" src="/App.tsx"></script>
+  
+  <script>
+    // Hide loading screen when app loads
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loading-screen').classList.add('hidden');
+      }, 500);
+    });
+    
+    // PWA Install Prompt
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Show install prompt if not installed
+      const installPrompt = document.getElementById('install-prompt');
+      const isInstalled = localStorage.getItem('retail_bandhu_installed');
+      
+      if (!isInstalled) {
+        installPrompt.classList.add('show');
+      }
+    });
+    
+    document.getElementById('install-button')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+          localStorage.setItem('retail_bandhu_installed', 'true');
+        }
+        
+        deferredPrompt = null;
+        document.getElementById('install-prompt').classList.remove('show');
+      }
+    });
+    
+    document.getElementById('close-prompt')?.addEventListener('click', () => {
+      document.getElementById('install-prompt').classList.remove('show');
+    });
+    
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('SW registered:', registration);
+          })
+          .catch(error => {
+            console.log('SW registration failed:', error);
+          });
+      });
+    }
+    
+    // Online/Offline detection
+    window.addEventListener('online', () => {
+      console.log('App is online');
+    });
+    
+    window.addEventListener('offline', () => {
+      console.log('App is offline');
+    });
+  </script>
+</body>
+</html>
