@@ -90,6 +90,9 @@ PostgreSQL database with Drizzle ORM. Tables:
 - Added proper foreign key constraints and cascade deletes
 - Fixed TypeScript/React import configuration
 - Configured Vite for Replit environment (port 5000, allowedHosts)
+- Added Vite proxy for /api requests to backend on port 3001
+- Implemented secure CORS with origin allowlist
+- Required SESSION_SECRET environment variable for security
 
 ## User Preferences
 - Hinglish interface (mix of Hindi and English)
