@@ -159,6 +159,26 @@ function App() {
       if (currentScreen === 'marketing' || currentScreen === 'login') {
         setCurrentScreen(isStoreComplete ? 'dashboard' : 'store-setup');
       }
+      
+      // Sync data from server after login
+      const syncDataFromServer = async () => {
+        try {
+          const [serverProducts] = await Promise.all([
+            storage.fetchProducts(),
+            storage.fetchCustomers(),
+            storage.fetchBills(),
+            storage.fetchKhataEntries(),
+            storage.fetchExpenses(),
+            storage.fetchParties(),
+          ]);
+          if (serverProducts.length > 0) {
+            setProducts(serverProducts);
+          }
+        } catch (error) {
+          console.error('Failed to sync data from server:', error);
+        }
+      };
+      syncDataFromServer();
     } else {
       // User not authenticated - clear local state
       setIsLoggedIn(false);
