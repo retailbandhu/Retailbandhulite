@@ -81,6 +81,7 @@ PostgreSQL database with Drizzle ORM. Tables:
 - **Mobile-First:** Designed primarily for mobile usage by shopkeepers
 
 ## Recent Changes
+- **Offline sync queue**: Automatic background sync when online, queue pending changes when offline, SyncStatus indicator in Dashboard
 - **Code-splitting implemented**: React.lazy loading for 35+ components, reducing initial bundle from 1,371KB to 256KB (81% reduction)
 - **Real voice billing**: Web Speech API with Hinglish support (en-IN, hi-IN languages), intelligent fuzzy product matching
 - **Security hardened**: requireStoreAccess middleware and verifyStoreOwnership on all API routes
