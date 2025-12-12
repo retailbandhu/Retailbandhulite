@@ -153,6 +153,15 @@ export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActi
             >
               <Settings className="w-5 h-5 text-white" />
             </button>
+            {onLogout && (
+              <button 
+                className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center"
+                onClick={onLogout}
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5 text-white" />
+              </button>
+            )}
           </div>
         </div>
 

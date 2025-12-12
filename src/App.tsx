@@ -280,6 +280,7 @@ function App() {
             onToggleAI={() => setShowAiAssistant(!showAiAssistant)}
             onToggleQuickActions={() => setShowQuickActions(!showQuickActions)}
             products={products}
+            onLogout={logout}
           />
         );
       case 'billing':
@@ -367,7 +368,7 @@ function App() {
       case 'admin-panel':
         return <EnhancedAdminPanel onNavigate={navigateTo} />;
       default:
-        return <Dashboard onNavigate={navigateTo} storeInfo={storeInfo} />;
+        return <Dashboard onNavigate={navigateTo} storeInfo={storeInfo} onLogout={logout} />;
     }
   };
 
