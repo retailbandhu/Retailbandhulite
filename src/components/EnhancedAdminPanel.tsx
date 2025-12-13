@@ -1447,9 +1447,17 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
             You don't have permission to access the Admin Panel. 
             Only the first registered user or designated admins can access this area.
           </p>
-          <Button onClick={() => onNavigate('marketing')} className="bg-blue-600">
-            ← Back to Home
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              onClick={() => window.location.href = '/api/login'} 
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600"
+            >
+              Login with Replit
+            </Button>
+            <Button onClick={() => onNavigate('marketing')} variant="outline" className="w-full">
+              ← Back to Home
+            </Button>
+          </div>
         </Card>
       </div>
     );
