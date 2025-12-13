@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Phone, Lock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import bandhuMascot from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
+import bandhuMascot from '@assets/retail_bandhu_logo.png';
 
 interface LoginScreenProps {
   onLoginComplete: () => void;
