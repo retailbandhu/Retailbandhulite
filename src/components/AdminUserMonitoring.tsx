@@ -103,52 +103,6 @@ export function AdminUserMonitoring() {
     }
   };
 
-  const mockUsers: User[] = [
-    {
-      id: '4',
-      name: 'Anjali Verma',
-      email: 'anjali@example.com',
-      phone: '+91 98765 43213',
-      storeName: 'Verma Super Market',
-      plan: 'pro',
-      status: 'active',
-      joinedDate: '2024-09-20',
-      lastActive: '30 minutes ago',
-      totalRevenue: 1499,
-      billsCreated: 1890,
-      productsAdded: 520,
-      whatsappSent: 450,
-      avgOrderValue: 142.30,
-      state: 'Delhi',
-      city: 'New Delhi',
-      loginCount: 185,
-      sessionTime: '16.8 min',
-      features: ['voice-billing', 'whatsapp', 'inventory', 'reports', 'catalog'],
-      rating: 4.6,
-    },
-    {
-      id: '5',
-      name: 'Vikram Singh',
-      email: 'vikram@example.com',
-      phone: '+91 98765 43214',
-      storeName: 'Singh Provision Store',
-      plan: 'free',
-      status: 'churned',
-      joinedDate: '2024-08-10',
-      lastActive: '15 days ago',
-      totalRevenue: 0,
-      billsCreated: 250,
-      productsAdded: 180,
-      whatsappSent: 0,
-      avgOrderValue: 88.50,
-      state: 'Uttar Pradesh',
-      city: 'Lucknow',
-      loginCount: 48,
-      sessionTime: '6.2 min',
-      features: ['voice-billing'],
-      rating: 3.5,
-    },
-  ]);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');

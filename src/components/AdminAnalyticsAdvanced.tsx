@@ -89,7 +89,7 @@ export function AdminAnalyticsAdvanced({ onClose, stats, bills = [], stores = []
   const getTopStores = () => {
     if (!stores || stores.length === 0) return [];
     
-    return stores
+    return [...stores]
       .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
       .slice(0, 5)
       .map(store => ({
