@@ -78,6 +78,7 @@ interface AdminPanelProps {
 type AdminTab = 
   | 'overview'
   | 'users'
+  | 'stores'
   | 'features'
   | 'subscriptions'
   | 'content'
@@ -411,6 +412,7 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'users', label: 'User Management', icon: Users },
+    { id: 'stores', label: 'Store Management', icon: Package },
     { id: 'features', label: 'Feature Flags', icon: Zap },
     { id: 'subscriptions', label: 'Subscriptions', icon: DollarSign },
     { id: 'content', label: 'Content CMS', icon: FileText },
@@ -665,6 +667,246 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
                         } else {
                           toast.info('User has no stores');
                         }
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+
+  const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [storeSearchQuery, setStoreSearchQuery] = useState('');
+
+  const filteredStores = allStores.filter(store => {
+    if (!storeSearchQuery) return true;
+    const query = storeSearchQuery.toLowerCase();
+    return store.name?.toLowerCase().includes(query) || 
+           store.owner?.toLowerCase().includes(query) ||
+           store.address?.toLowerCase().includes(query);
+  });
+
+  const updateStore = async (storeId: number, updates: any) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/stores/${storeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+      if (response.ok) {
+        toast.success('Store updated successfully');
+        fetchAllData();
+        setSelectedStore(null);
+      } else {
+        toast.error('Failed to update store');
+      }
+    } catch (error) {
+      console.error('Error updating store:', error);
+      toast.error('Failed to update store');
+    }
+  };
+
+  const renderStores = () => (
+    <div className="space-y-6">
+      {/* Search & Filters */}
+      <Card className="p-4">
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search stores by name, owner, address..."
+              value={storeSearchQuery}
+              onChange={(e) => setStoreSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button variant="outline" onClick={refreshMetrics}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </Card>
+
+      {/* Stores Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <div className="flex items-center gap-3">
+            <Package className="w-8 h-8 text-blue-600" />
+            <div>
+              <div className="text-2xl font-bold text-blue-900">{allStores.length}</div>
+              <div className="text-sm text-blue-700">Total Stores</div>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <div className="flex items-center gap-3">
+            <DollarSign className="w-8 h-8 text-green-600" />
+            <div>
+              <div className="text-2xl font-bold text-green-900">
+                ₹{allStores.reduce((sum, s) => sum + (s.totalRevenue || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-sm text-green-700">Total Revenue</div>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <div className="flex items-center gap-3">
+            <Activity className="w-8 h-8 text-purple-600" />
+            <div>
+              <div className="text-2xl font-bold text-purple-900">
+                {allStores.reduce((sum, s) => sum + (s.billCount || 0), 0).toLocaleString()}
+              </div>
+              <div className="text-sm text-purple-700">Total Bills</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Store Edit Modal */}
+      {selectedStore && (
+        <Card className="p-6 border-2 border-blue-500 bg-blue-50">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-600" />
+              Edit Store: {selectedStore.name}
+            </h3>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedStore(null)}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Store Name</label>
+              <Input
+                value={selectedStore.name || ''}
+                onChange={(e) => setSelectedStore({ ...selectedStore, name: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Owner Name</label>
+              <Input
+                value={selectedStore.owner || ''}
+                onChange={(e) => setSelectedStore({ ...selectedStore, owner: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Phone</label>
+              <Input
+                value={selectedStore.phone || ''}
+                onChange={(e) => setSelectedStore({ ...selectedStore, phone: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">GSTIN</label>
+              <Input
+                value={selectedStore.gstin || ''}
+                onChange={(e) => setSelectedStore({ ...selectedStore, gstin: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium text-gray-700">Address</label>
+              <Textarea
+                value={selectedStore.address || ''}
+                onChange={(e) => setSelectedStore({ ...selectedStore, address: e.target.value })}
+                className="mt-1"
+                rows={2}
+              />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              className="bg-blue-600"
+              onClick={() => updateStore(selectedStore.id, {
+                name: selectedStore.name,
+                owner: selectedStore.owner,
+                phone: selectedStore.phone,
+                gstin: selectedStore.gstin,
+                address: selectedStore.address,
+              })}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </Button>
+            <Button variant="outline" onClick={() => setSelectedStore(null)}>
+              Cancel
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Stores Table */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-lg">All Stores ({allStores.length})</h3>
+          <Badge className="bg-green-600">Live Data</Badge>
+        </div>
+
+        {allStores.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No stores found in database</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredStores.map((store) => (
+              <Card key={store.id} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div 
+                      className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
+                      style={{ backgroundColor: store.billColor || '#1E88E5' }}
+                    >
+                      {(store.name || 'S').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-gray-900">{store.name || 'Unnamed Store'}</span>
+                        <Badge className="bg-blue-500">ID: {store.id}</Badge>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-0.5">
+                        <div className="flex items-center gap-4">
+                          <span>Owner: {store.owner || 'N/A'}</span>
+                          <span>Phone: {store.phone || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span>{store.productCount || 0} products</span>
+                          <span>{store.customerCount || 0} customers</span>
+                          <span>{store.billCount || 0} bills</span>
+                          <span className="font-medium text-green-600">₹{(store.totalRevenue || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedStore(store)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        toast.info(`Store Details:\nProducts: ${store.productCount}\nCustomers: ${store.customerCount}\nBills: ${store.billCount}\nRevenue: ₹${store.totalRevenue?.toLocaleString()}`);
                       }}
                     >
                       <Eye className="w-4 h-4" />
@@ -1290,6 +1532,7 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
           <div className="col-span-12 md:col-span-9">
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'users' && <AdminUserMonitoring />}
+            {activeTab === 'stores' && renderStores()}
             {activeTab === 'features' && renderFeatures()}
             {activeTab === 'system' && renderSystem()}
             {activeTab === 'content' && <AdminContentCMS />}
