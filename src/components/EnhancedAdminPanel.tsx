@@ -194,11 +194,14 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
 
   const fetchAllData = async () => {
     try {
-      const [statsRes, usersRes, storesRes, billsRes] = await Promise.all([
+      const [statsRes, usersRes, storesRes, billsRes, flagsRes, configRes, logsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/stats`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/users`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/stores`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/bills`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/feature-flags`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/config`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/audit-logs`, { credentials: 'include' }),
       ]);
 
       if (statsRes.ok) {
@@ -216,6 +219,50 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
       if (billsRes.ok) {
         const billsData = await billsRes.json();
         setAllBills(billsData);
+      }
+      if (flagsRes.ok) {
+        const flagsData = await flagsRes.json();
+        setFeatureFlags(flagsData.map((f: any) => ({
+          id: f.id.toString(),
+          name: f.name,
+          description: f.description || '',
+          enabled: f.enabled,
+          userPercentage: f.userPercentage || 100,
+          category: f.category || 'General',
+        })));
+      }
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        const configMap: Record<string, any> = {};
+        configData.forEach((c: any) => {
+          configMap[c.key] = c.value;
+        });
+        setAppConfig(prev => ({
+          ...prev,
+          maintenanceMode: configMap.maintenanceMode === 'true' || configMap.maintenanceMode === true,
+          forceUpdate: configMap.forceUpdate === 'true' || configMap.forceUpdate === true,
+          minVersion: configMap.minVersion || prev.minVersion,
+          maxProductsPerStore: parseInt(configMap.maxProductsPerStore) || prev.maxProductsPerStore,
+          maxBillsPerMonth: parseInt(configMap.maxBillsPerMonth) || prev.maxBillsPerMonth,
+          enableSignup: configMap.enableSignup !== 'false' && configMap.enableSignup !== false,
+          enableSocialLogin: configMap.enableSocialLogin !== 'false' && configMap.enableSocialLogin !== false,
+          defaultLanguage: configMap.defaultLanguage || prev.defaultLanguage,
+          whatsappApiEnabled: configMap.whatsappApiEnabled !== 'false' && configMap.whatsappApiEnabled !== false,
+          smsNotificationsEnabled: configMap.smsNotificationsEnabled !== 'false' && configMap.smsNotificationsEnabled !== false,
+          emailNotificationsEnabled: configMap.emailNotificationsEnabled !== 'false' && configMap.emailNotificationsEnabled !== false,
+        }));
+      }
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        setAuditLogs(logsData.map((l: any) => ({
+          id: l.id.toString(),
+          timestamp: l.createdAt,
+          admin: l.adminName || 'System',
+          action: l.action,
+          target: l.target || '',
+          details: l.details || '',
+          status: l.status || 'success',
+        })));
       }
     } catch (error) {
       console.error('Error fetching admin data:', error);
@@ -249,18 +296,6 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     }
   };
 
-  const logAction = (action: string, target: string, details: string, status: 'success' | 'failure' = 'success') => {
-    const newLog: AuditLog = {
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      admin: 'Super Admin',
-      action,
-      target,
-      details,
-      status,
-    };
-    setAuditLogs(prev => [newLog, ...prev.slice(0, 99)]); // Keep last 100 logs
-  };
 
   const [users, setUsers] = useState<User[]>([
     {
@@ -301,56 +336,7 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     },
   ]);
 
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([
-    {
-      id: 'voice-billing',
-      name: 'Voice Billing',
-      description: 'AI-powered voice input for creating bills',
-      enabled: true,
-      userPercentage: 100,
-      category: 'Core Features',
-    },
-    {
-      id: 'whatsapp-automation',
-      name: 'WhatsApp Automation',
-      description: 'Automated WhatsApp marketing campaigns',
-      enabled: true,
-      userPercentage: 75,
-      category: 'Marketing',
-    },
-    {
-      id: 'barcode-scanner',
-      name: 'Barcode Scanner',
-      description: 'Camera-based barcode scanning',
-      enabled: true,
-      userPercentage: 90,
-      category: 'Inventory',
-    },
-    {
-      id: 'ai-insights',
-      name: 'AI Business Insights',
-      description: 'AI-powered business recommendations',
-      enabled: false,
-      userPercentage: 10,
-      category: 'Analytics',
-    },
-    {
-      id: 'loyalty-program',
-      name: 'Loyalty Program',
-      description: 'Customer rewards and points system',
-      enabled: true,
-      userPercentage: 50,
-      category: 'Customer Management',
-    },
-    {
-      id: 'multi-store',
-      name: 'Multi-Store Management',
-      description: 'Manage multiple store locations',
-      enabled: false,
-      userPercentage: 0,
-      category: 'Core Features',
-    },
-  ]);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
 
   const [appConfig, setAppConfig] = useState({
     maintenanceMode: false,
@@ -367,30 +353,87 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     emailNotificationsEnabled: true,
   });
 
-  const toggleFeature = (featureId: string) => {
-    setFeatureFlags(prev =>
-      prev.map(f =>
-        f.id === featureId ? { ...f, enabled: !f.enabled } : f
-      )
-    );
-    toast.success('Feature flag updated');
+  const toggleFeature = async (featureId: string) => {
+    const flag = featureFlags.find(f => f.id === featureId);
+    if (!flag) return;
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/feature-flags/${featureId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ enabled: !flag.enabled }),
+      });
+      
+      if (res.ok) {
+        setFeatureFlags(prev =>
+          prev.map(f =>
+            f.id === featureId ? { ...f, enabled: !f.enabled } : f
+          )
+        );
+        toast.success('Feature flag updated');
+      } else {
+        toast.error('Failed to update feature flag');
+      }
+    } catch (error) {
+      console.error('Error updating feature flag:', error);
+      toast.error('Failed to update feature flag');
+    }
   };
 
-  const updateUserPercentage = (featureId: string, percentage: number) => {
+  const updateUserPercentage = async (featureId: string, percentage: number) => {
+    const previousFlags = [...featureFlags];
+    
     setFeatureFlags(prev =>
       prev.map(f =>
         f.id === featureId ? { ...f, userPercentage: percentage } : f
       )
     );
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/feature-flags/${featureId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userPercentage: percentage }),
+      });
+      
+      if (!res.ok) {
+        setFeatureFlags(previousFlags);
+        toast.error('Failed to update rollout percentage');
+      }
+    } catch (error) {
+      console.error('Error updating user percentage:', error);
+      setFeatureFlags(previousFlags);
+      toast.error('Failed to update rollout percentage');
+    }
   };
 
-  const toggleMaintenanceMode = () => {
-    setAppConfig(prev => ({ ...prev, maintenanceMode: !prev.maintenanceMode }));
-    toast.success(
-      appConfig.maintenanceMode
-        ? 'Maintenance mode disabled'
-        : 'Maintenance mode enabled'
-    );
+  const toggleMaintenanceMode = async () => {
+    const newValue = !appConfig.maintenanceMode;
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/config/maintenanceMode`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: newValue.toString() }),
+      });
+      
+      if (res.ok) {
+        setAppConfig(prev => ({ ...prev, maintenanceMode: newValue }));
+        toast.success(
+          newValue
+            ? 'Maintenance mode enabled'
+            : 'Maintenance mode disabled'
+        );
+      } else {
+        toast.error('Failed to update maintenance mode');
+      }
+    } catch (error) {
+      console.error('Error updating maintenance mode:', error);
+      toast.error('Failed to update maintenance mode');
+    }
   };
 
   const suspendUser = (userId: string) => {
@@ -921,21 +964,56 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     </div>
   );
 
+  const initializeDefaults = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/init-defaults`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (res.ok) {
+        toast.success('Default data initialized');
+        await fetchAllData();
+      } else {
+        toast.error('Failed to initialize defaults');
+      }
+    } catch (error) {
+      console.error('Error initializing defaults:', error);
+      toast.error('Failed to initialize defaults');
+    }
+  };
+
   const renderFeatures = () => (
     <div className="space-y-6">
       <Card className="p-6 bg-blue-50 border-blue-200">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-bold text-blue-900 mb-1">Feature Flags Control</h3>
-            <p className="text-sm text-blue-700">
-              Enable/disable features and control rollout percentage. Changes take effect immediately.
-            </p>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-blue-900 mb-1">Feature Flags Control</h3>
+              <p className="text-sm text-blue-700">
+                Enable/disable features and control rollout percentage. Changes take effect immediately.
+              </p>
+            </div>
           </div>
+          {featureFlags.length === 0 && (
+            <Button onClick={initializeDefaults} className="bg-blue-600">
+              <Plus className="w-4 h-4 mr-2" />
+              Initialize Defaults
+            </Button>
+          )}
         </div>
       </Card>
 
-      {(Object.entries(
+      {featureFlags.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <h3 className="font-bold text-lg text-gray-900 mb-2">No Feature Flags</h3>
+          <p className="text-gray-600 mb-4">
+            Click "Initialize Defaults" to create default feature flags for voice billing, WhatsApp automation, and more.
+          </p>
+        </Card>
+      ) : (Object.entries(
         featureFlags.reduce((acc, flag) => {
           if (!acc[flag.category]) acc[flag.category] = [];
           acc[flag.category].push(flag);

@@ -2,8 +2,12 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import path from "path";
 import { db } from "./db";
-import { stores, products, customers, bills, khataEntries, expenses, parties, users } from "../shared/schema";
-import { eq, desc, and, sql, count, sum } from "drizzle-orm";
+import { 
+  stores, products, customers, bills, khataEntries, expenses, parties, users,
+  featureFlags, subscriptionPlans, userSubscriptions, appConfig, auditLogs,
+  adminNotifications, blogPosts, messageTemplates, webhooks, coupons
+} from "../shared/schema";
+import { eq, desc, and, sql, count, sum, asc } from "drizzle-orm";
 import { setupAuth, isAuthenticated, getUser } from "./replitAuth";
 
 const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
@@ -593,6 +597,440 @@ function registerRoutes() {
     } catch (error) {
       console.error("Error fetching bills:", error);
       res.status(500).json({ error: "Failed to fetch bills" });
+    }
+  });
+
+  // ============== FEATURE FLAGS ==============
+  app.get("/api/admin/feature-flags", requireAdmin, async (req: any, res) => {
+    try {
+      const flags = await db.select().from(featureFlags).orderBy(featureFlags.category, featureFlags.name);
+      res.json(flags);
+    } catch (error) {
+      console.error("Error fetching feature flags:", error);
+      res.status(500).json({ error: "Failed to fetch feature flags" });
+    }
+  });
+
+  app.post("/api/admin/feature-flags", requireAdmin, async (req: any, res) => {
+    try {
+      const [flag] = await db.insert(featureFlags).values(req.body).returning();
+      await db.insert(auditLogs).values({
+        adminId: req.user.claims.sub,
+        action: "create_feature_flag",
+        target: "feature_flags",
+        targetId: flag.id.toString(),
+        details: { name: flag.name },
+      });
+      res.status(201).json(flag);
+    } catch (error) {
+      console.error("Error creating feature flag:", error);
+      res.status(500).json({ error: "Failed to create feature flag" });
+    }
+  });
+
+  app.put("/api/admin/feature-flags/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const flagId = parseInt(req.params.id);
+      const [updated] = await db.update(featureFlags).set({ ...req.body, updatedAt: new Date() }).where(eq(featureFlags.id, flagId)).returning();
+      await db.insert(auditLogs).values({
+        adminId: req.user.claims.sub,
+        action: "update_feature_flag",
+        target: "feature_flags",
+        targetId: flagId.toString(),
+        details: req.body,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating feature flag:", error);
+      res.status(500).json({ error: "Failed to update feature flag" });
+    }
+  });
+
+  app.delete("/api/admin/feature-flags/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const flagId = parseInt(req.params.id);
+      await db.delete(featureFlags).where(eq(featureFlags.id, flagId));
+      await db.insert(auditLogs).values({
+        adminId: req.user.claims.sub,
+        action: "delete_feature_flag",
+        target: "feature_flags",
+        targetId: flagId.toString(),
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting feature flag:", error);
+      res.status(500).json({ error: "Failed to delete feature flag" });
+    }
+  });
+
+  // ============== SUBSCRIPTION PLANS ==============
+  app.get("/api/admin/subscription-plans", requireAdmin, async (req: any, res) => {
+    try {
+      const plans = await db.select().from(subscriptionPlans).orderBy(subscriptionPlans.sortOrder);
+      
+      // Get user counts per plan
+      const plansWithStats = await Promise.all(plans.map(async (plan) => {
+        const [subCount] = await db.select({ count: count() }).from(userSubscriptions)
+          .where(and(eq(userSubscriptions.planId, plan.id), eq(userSubscriptions.status, 'active')));
+        return {
+          ...plan,
+          userCount: subCount?.count || 0,
+        };
+      }));
+      
+      res.json(plansWithStats);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ error: "Failed to fetch subscription plans" });
+    }
+  });
+
+  app.post("/api/admin/subscription-plans", requireAdmin, async (req: any, res) => {
+    try {
+      const [plan] = await db.insert(subscriptionPlans).values(req.body).returning();
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Error creating subscription plan:", error);
+      res.status(500).json({ error: "Failed to create subscription plan" });
+    }
+  });
+
+  app.put("/api/admin/subscription-plans/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const planId = parseInt(req.params.id);
+      const [updated] = await db.update(subscriptionPlans).set(req.body).where(eq(subscriptionPlans.id, planId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating subscription plan:", error);
+      res.status(500).json({ error: "Failed to update subscription plan" });
+    }
+  });
+
+  // ============== COUPONS ==============
+  app.get("/api/admin/coupons", requireAdmin, async (req: any, res) => {
+    try {
+      const allCoupons = await db.select().from(coupons).orderBy(desc(coupons.createdAt));
+      res.json(allCoupons);
+    } catch (error) {
+      console.error("Error fetching coupons:", error);
+      res.status(500).json({ error: "Failed to fetch coupons" });
+    }
+  });
+
+  app.post("/api/admin/coupons", requireAdmin, async (req: any, res) => {
+    try {
+      const [coupon] = await db.insert(coupons).values(req.body).returning();
+      res.status(201).json(coupon);
+    } catch (error) {
+      console.error("Error creating coupon:", error);
+      res.status(500).json({ error: "Failed to create coupon" });
+    }
+  });
+
+  app.put("/api/admin/coupons/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const couponId = parseInt(req.params.id);
+      const [updated] = await db.update(coupons).set(req.body).where(eq(coupons.id, couponId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating coupon:", error);
+      res.status(500).json({ error: "Failed to update coupon" });
+    }
+  });
+
+  app.delete("/api/admin/coupons/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const couponId = parseInt(req.params.id);
+      await db.delete(coupons).where(eq(coupons.id, couponId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting coupon:", error);
+      res.status(500).json({ error: "Failed to delete coupon" });
+    }
+  });
+
+  // ============== APP CONFIG (System Settings) ==============
+  app.get("/api/admin/config", requireAdmin, async (req: any, res) => {
+    try {
+      const configs = await db.select().from(appConfig).orderBy(appConfig.category, appConfig.key);
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching app config:", error);
+      res.status(500).json({ error: "Failed to fetch config" });
+    }
+  });
+
+  app.put("/api/admin/config/:key", requireAdmin, async (req: any, res) => {
+    try {
+      const key = req.params.key;
+      const { value, category, description } = req.body;
+      
+      // Upsert config
+      const existing = await db.select().from(appConfig).where(eq(appConfig.key, key));
+      let config;
+      if (existing.length > 0) {
+        [config] = await db.update(appConfig).set({ value, category, description, updatedAt: new Date() }).where(eq(appConfig.key, key)).returning();
+      } else {
+        [config] = await db.insert(appConfig).values({ key, value, category, description }).returning();
+      }
+      
+      await db.insert(auditLogs).values({
+        adminId: req.user.claims.sub,
+        action: "update_config",
+        target: "app_config",
+        targetId: key,
+        details: { value },
+      });
+      
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating config:", error);
+      res.status(500).json({ error: "Failed to update config" });
+    }
+  });
+
+  // ============== AUDIT LOGS ==============
+  app.get("/api/admin/audit-logs", requireAdmin, async (req: any, res) => {
+    try {
+      const logs = await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(200);
+      
+      // Get admin names
+      const logsWithAdmins = await Promise.all(logs.map(async (log) => {
+        let admin: any = null;
+        if (log.adminId) {
+          const [user] = await db.select().from(users).where(eq(users.id, log.adminId));
+          admin = user || null;
+        }
+        return { ...log, admin };
+      }));
+      
+      res.json(logsWithAdmins);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
+  // ============== ADMIN NOTIFICATIONS ==============
+  app.get("/api/admin/notifications", requireAdmin, async (req: any, res) => {
+    try {
+      const notifications = await db.select().from(adminNotifications).orderBy(desc(adminNotifications.createdAt));
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/admin/notifications", requireAdmin, async (req: any, res) => {
+    try {
+      const [notification] = await db.insert(adminNotifications).values({
+        ...req.body,
+        createdBy: req.user.claims.sub,
+      }).returning();
+      res.status(201).json(notification);
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      res.status(500).json({ error: "Failed to create notification" });
+    }
+  });
+
+  app.put("/api/admin/notifications/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const notifId = parseInt(req.params.id);
+      const [updated] = await db.update(adminNotifications).set(req.body).where(eq(adminNotifications.id, notifId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating notification:", error);
+      res.status(500).json({ error: "Failed to update notification" });
+    }
+  });
+
+  app.post("/api/admin/notifications/:id/send", requireAdmin, async (req: any, res) => {
+    try {
+      const notifId = parseInt(req.params.id);
+      const [updated] = await db.update(adminNotifications).set({ 
+        status: 'sent', 
+        sentAt: new Date() 
+      }).where(eq(adminNotifications.id, notifId)).returning();
+      
+      await db.insert(auditLogs).values({
+        adminId: req.user.claims.sub,
+        action: "send_notification",
+        target: "admin_notifications",
+        targetId: notifId.toString(),
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error sending notification:", error);
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
+  // ============== BLOG POSTS (CMS) ==============
+  app.get("/api/admin/blog-posts", requireAdmin, async (req: any, res) => {
+    try {
+      const posts = await db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.post("/api/admin/blog-posts", requireAdmin, async (req: any, res) => {
+    try {
+      const [post] = await db.insert(blogPosts).values(req.body).returning();
+      res.status(201).json(post);
+    } catch (error) {
+      console.error("Error creating blog post:", error);
+      res.status(500).json({ error: "Failed to create blog post" });
+    }
+  });
+
+  app.put("/api/admin/blog-posts/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const [updated] = await db.update(blogPosts).set({ ...req.body, updatedAt: new Date() }).where(eq(blogPosts.id, postId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating blog post:", error);
+      res.status(500).json({ error: "Failed to update blog post" });
+    }
+  });
+
+  app.delete("/api/admin/blog-posts/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      await db.delete(blogPosts).where(eq(blogPosts.id, postId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting blog post:", error);
+      res.status(500).json({ error: "Failed to delete blog post" });
+    }
+  });
+
+  // ============== MESSAGE TEMPLATES (CMS) ==============
+  app.get("/api/admin/templates", requireAdmin, async (req: any, res) => {
+    try {
+      const templates = await db.select().from(messageTemplates).orderBy(messageTemplates.type, messageTemplates.name);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.post("/api/admin/templates", requireAdmin, async (req: any, res) => {
+    try {
+      const [template] = await db.insert(messageTemplates).values(req.body).returning();
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error creating template:", error);
+      res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  app.put("/api/admin/templates/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      const [updated] = await db.update(messageTemplates).set(req.body).where(eq(messageTemplates.id, templateId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating template:", error);
+      res.status(500).json({ error: "Failed to update template" });
+    }
+  });
+
+  // ============== WEBHOOKS ==============
+  app.get("/api/admin/webhooks", requireAdmin, async (req: any, res) => {
+    try {
+      const allWebhooks = await db.select().from(webhooks).orderBy(desc(webhooks.createdAt));
+      res.json(allWebhooks);
+    } catch (error) {
+      console.error("Error fetching webhooks:", error);
+      res.status(500).json({ error: "Failed to fetch webhooks" });
+    }
+  });
+
+  app.post("/api/admin/webhooks", requireAdmin, async (req: any, res) => {
+    try {
+      const [webhook] = await db.insert(webhooks).values(req.body).returning();
+      res.status(201).json(webhook);
+    } catch (error) {
+      console.error("Error creating webhook:", error);
+      res.status(500).json({ error: "Failed to create webhook" });
+    }
+  });
+
+  app.put("/api/admin/webhooks/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const webhookId = parseInt(req.params.id);
+      const [updated] = await db.update(webhooks).set(req.body).where(eq(webhooks.id, webhookId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating webhook:", error);
+      res.status(500).json({ error: "Failed to update webhook" });
+    }
+  });
+
+  app.delete("/api/admin/webhooks/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const webhookId = parseInt(req.params.id);
+      await db.delete(webhooks).where(eq(webhooks.id, webhookId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting webhook:", error);
+      res.status(500).json({ error: "Failed to delete webhook" });
+    }
+  });
+
+  // Initialize default feature flags and subscription plans if empty
+  app.post("/api/admin/init-defaults", requireAdmin, async (req: any, res) => {
+    try {
+      // Check if feature flags exist
+      const existingFlags = await db.select().from(featureFlags);
+      if (existingFlags.length === 0) {
+        await db.insert(featureFlags).values([
+          { name: 'voice-billing', description: 'AI-powered voice input for creating bills', enabled: true, userPercentage: 100, category: 'Core Features' },
+          { name: 'whatsapp-automation', description: 'Automated WhatsApp marketing campaigns', enabled: true, userPercentage: 75, category: 'Marketing' },
+          { name: 'barcode-scanner', description: 'Camera-based barcode scanning', enabled: true, userPercentage: 90, category: 'Inventory' },
+          { name: 'ai-insights', description: 'AI-powered business recommendations', enabled: false, userPercentage: 10, category: 'Analytics' },
+          { name: 'loyalty-program', description: 'Customer rewards and points system', enabled: true, userPercentage: 50, category: 'Customer Management' },
+          { name: 'multi-store', description: 'Manage multiple store locations', enabled: false, userPercentage: 0, category: 'Core Features' },
+        ]);
+      }
+
+      // Check if subscription plans exist
+      const existingPlans = await db.select().from(subscriptionPlans);
+      if (existingPlans.length === 0) {
+        await db.insert(subscriptionPlans).values([
+          { name: 'free', displayName: 'Free', price: '0', features: ['Up to 100 bills/month', 'Basic inventory', '1 store'], sortOrder: 1 },
+          { name: 'pro', displayName: 'Pro', price: '999', highlighted: true, features: ['Unlimited bills', 'Advanced inventory', 'Voice billing', 'WhatsApp integration'], sortOrder: 2 },
+          { name: 'automation', displayName: 'Automation Pro', price: '1998', features: ['Everything in Pro', 'WhatsApp automation', 'AI insights', 'API access'], sortOrder: 3 },
+        ]);
+      }
+
+      // Initialize default app config
+      const existingConfig = await db.select().from(appConfig);
+      if (existingConfig.length === 0) {
+        await db.insert(appConfig).values([
+          { key: 'maintenance_mode', value: false, category: 'system', description: 'Enable maintenance mode' },
+          { key: 'force_update', value: false, category: 'system', description: 'Force app update' },
+          { key: 'min_version', value: '1.0.0', category: 'system', description: 'Minimum app version' },
+          { key: 'max_products_per_store', value: 5000, category: 'limits', description: 'Maximum products per store' },
+          { key: 'max_bills_per_month', value: 1000, category: 'limits', description: 'Maximum bills per month for free tier' },
+          { key: 'enable_signup', value: true, category: 'auth', description: 'Enable new user signups' },
+          { key: 'whatsapp_api_enabled', value: true, category: 'integrations', description: 'Enable WhatsApp API' },
+          { key: 'sms_notifications_enabled', value: true, category: 'integrations', description: 'Enable SMS notifications' },
+        ]);
+      }
+
+      res.json({ success: true, message: 'Default data initialized' });
+    } catch (error) {
+      console.error("Error initializing defaults:", error);
+      res.status(500).json({ error: "Failed to initialize defaults" });
     }
   });
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -38,7 +38,10 @@ import {
   HelpCircle,
   FileCode,
   Zap,
+  RefreshCw,
 } from 'lucide-react';
+
+const API_BASE_URL = '/api/admin';
 
 interface BlogPost {
   id: string;
@@ -80,42 +83,75 @@ type CMSView = 'overview' | 'blog' | 'videos' | 'whatsapp' | 'notifications' | '
 export function AdminContentCMS() {
   const [activeView, setActiveView] = useState<CMSView>('overview');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([
-    {
-      id: '1',
-      title: 'Getting Started with Voice Billing',
-      slug: 'getting-started-voice-billing',
-      excerpt: 'Learn how to use voice commands to create bills faster...',
-      author: 'Retail Bandhu Team',
-      status: 'published',
-      publishDate: '2024-12-01',
-      views: 1245,
-      category: 'Tutorials',
-    },
-    {
-      id: '2',
-      title: 'WhatsApp Automation: Complete Guide',
-      slug: 'whatsapp-automation-guide',
-      excerpt: 'Automate your customer communication with WhatsApp...',
-      author: 'Marketing Team',
-      status: 'published',
-      publishDate: '2024-12-05',
-      views: 892,
-      category: 'Marketing',
-    },
-    {
-      id: '3',
-      title: 'Inventory Management Best Practices',
-      slug: 'inventory-management-best-practices',
-      excerpt: 'Tips and tricks for managing inventory efficiently...',
-      author: 'Product Team',
-      status: 'draft',
-      publishDate: '2024-12-15',
-      views: 0,
-      category: 'Business',
-    },
-  ]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    fetchCMSData();
+  }, []);
+
+  const fetchCMSData = async () => {
+    try {
+      const [postsRes, templatesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/blog-posts`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/templates`, { credentials: 'include' }),
+      ]);
+
+      if (postsRes.ok) {
+        const postsData = await postsRes.json();
+        if (postsData.length > 0) {
+          setBlogPosts(postsData.map((p: any) => ({
+            id: p.id.toString(),
+            title: p.title || '',
+            slug: p.slug || '',
+            excerpt: p.excerpt || '',
+            author: p.author || 'Admin',
+            status: p.status || 'draft',
+            publishDate: p.publishDate || new Date().toISOString().split('T')[0],
+            views: p.views || 0,
+            category: p.category || 'General',
+          })));
+        }
+      }
+
+      if (templatesRes.ok) {
+        const templatesData = await templatesRes.json();
+        if (templatesData.length > 0) {
+          const whatsapp = templatesData.filter((t: any) => t.type === 'whatsapp');
+          const notification = templatesData.filter((t: any) => t.type === 'notification');
+          
+          if (whatsapp.length > 0) {
+            setWhatsappTemplates(whatsapp.map((t: any) => ({
+              id: t.id.toString(),
+              name: t.name || '',
+              type: t.type,
+              content: t.content || '',
+              variables: t.variables || [],
+              active: t.active !== false,
+              usageCount: t.usageCount || 0,
+            })));
+          }
+          
+          if (notification.length > 0) {
+            setNotificationTemplates(notification.map((t: any) => ({
+              id: t.id.toString(),
+              name: t.name || '',
+              type: t.type,
+              content: t.content || '',
+              variables: t.variables || [],
+              active: t.active !== false,
+              usageCount: t.usageCount || 0,
+            })));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching CMS data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [videoTutorials, setVideoTutorials] = useState<VideoTutorial[]>([
     {
@@ -180,56 +216,9 @@ export function AdminContentCMS() {
     },
   ]);
 
-  const [whatsappTemplates, setWhatsappTemplates] = useState<Template[]>([
-    {
-      id: 'wt1',
-      name: 'Order Confirmation',
-      type: 'whatsapp',
-      content: 'Hi {{customer_name}}, your order #{{order_id}} has been confirmed. Total: ₹{{amount}}. Thank you!',
-      variables: ['customer_name', 'order_id', 'amount'],
-      active: true,
-      usageCount: 1245,
-    },
-    {
-      id: 'wt2',
-      name: 'Payment Reminder',
-      type: 'whatsapp',
-      content: 'Dear {{customer_name}}, you have a pending payment of ₹{{amount}}. Please clear dues by {{due_date}}.',
-      variables: ['customer_name', 'amount', 'due_date'],
-      active: true,
-      usageCount: 687,
-    },
-    {
-      id: 'wt3',
-      name: 'New Product Launch',
-      type: 'whatsapp',
-      content: '🎉 New arrival! {{product_name}} now available at {{store_name}}. Special price: ₹{{price}}. Visit today!',
-      variables: ['product_name', 'store_name', 'price'],
-      active: false,
-      usageCount: 234,
-    },
-  ]);
+  const [whatsappTemplates, setWhatsappTemplates] = useState<Template[]>([]);
 
-  const [notificationTemplates, setNotificationTemplates] = useState<Template[]>([
-    {
-      id: 'nt1',
-      name: 'Low Stock Alert',
-      type: 'notification',
-      content: '⚠️ Low stock alert: {{product_name}} has only {{quantity}} units left.',
-      variables: ['product_name', 'quantity'],
-      active: true,
-      usageCount: 432,
-    },
-    {
-      id: 'nt2',
-      name: 'Daily Sales Summary',
-      type: 'notification',
-      content: '📊 Today\'s sales: ₹{{total_sales}} | Bills: {{bill_count}} | Top product: {{top_product}}',
-      variables: ['total_sales', 'bill_count', 'top_product'],
-      active: true,
-      usageCount: 890,
-    },
-  ]);
+  const [notificationTemplates, setNotificationTemplates] = useState<Template[]>([]);
 
   const renderOverview = () => (
     <div className="space-y-6">

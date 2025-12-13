@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -22,7 +22,10 @@ import {
   Save,
   Ticket,
   CreditCard,
+  RefreshCw,
 } from 'lucide-react';
+
+const API_BASE_URL = '/api/admin';
 
 interface PricingPlan {
   id: string;
@@ -41,115 +44,237 @@ interface PricingPlan {
 
 type SubscriptionTab = 'pricing' | 'coupons' | 'transactions';
 
+const defaultPlans: PricingPlan[] = [
+  {
+    id: 'free',
+    name: 'free',
+    displayName: 'Free',
+    price: 0,
+    currency: '₹',
+    interval: 'month',
+    features: [
+      'Up to 100 bills/month',
+      'Basic inventory management',
+      '1 store',
+      'Digital bill sharing',
+      'Basic reports',
+    ],
+    highlighted: false,
+    active: true,
+    userCount: 0,
+    revenue: 0,
+    color: 'gray',
+  },
+  {
+    id: 'pro',
+    name: 'pro',
+    displayName: 'Pro',
+    price: 999,
+    currency: '₹',
+    interval: 'month',
+    features: [
+      'Unlimited bills',
+      'Advanced inventory',
+      'Up to 3 stores',
+      'Voice billing',
+      'WhatsApp integration',
+      'Barcode scanner',
+      'Custom bill designs',
+      'Priority support',
+    ],
+    highlighted: true,
+    active: true,
+    userCount: 0,
+    revenue: 0,
+    color: 'blue',
+  },
+  {
+    id: 'automation',
+    name: 'automation',
+    displayName: 'Automation Pro',
+    price: 1998,
+    currency: '₹',
+    interval: 'month',
+    features: [
+      'Everything in Pro',
+      'WhatsApp automation',
+      'AI business insights',
+      'Unlimited stores',
+      'Custom integrations',
+      'Dedicated account manager',
+      'Advanced analytics',
+      'API access',
+    ],
+    highlighted: false,
+    active: true,
+    userCount: 0,
+    revenue: 0,
+    color: 'orange',
+  },
+];
+
 export function AdminSubscriptionManagement() {
   const [activeSubTab, setActiveSubTab] = useState<SubscriptionTab>('pricing');
-  const [plans, setPlans] = useState<PricingPlan[]>([
-    {
-      id: 'free',
-      name: 'free',
-      displayName: 'Free',
-      price: 0,
-      currency: '₹',
-      interval: 'month',
-      features: [
-        'Up to 100 bills/month',
-        'Basic inventory management',
-        '1 store',
-        'Digital bill sharing',
-        'Basic reports',
-      ],
-      highlighted: false,
-      active: true,
-      userCount: 8245,
-      revenue: 0,
-      color: 'gray',
-    },
-    {
-      id: 'pro',
-      name: 'pro',
-      displayName: 'Pro',
-      price: 999,
-      currency: '₹',
-      interval: 'month',
-      features: [
-        'Unlimited bills',
-        'Advanced inventory',
-        'Up to 3 stores',
-        'Voice billing',
-        'WhatsApp integration',
-        'Barcode scanner',
-        'Custom bill designs',
-        'Priority support',
-      ],
-      highlighted: true,
-      active: true,
-      userCount: 5892,
-      revenue: 5886108,
-      color: 'blue',
-    },
-    {
-      id: 'automation',
-      name: 'automation',
-      displayName: 'Automation Pro',
-      price: 1998,
-      currency: '₹',
-      interval: 'month',
-      features: [
-        'Everything in Pro',
-        'WhatsApp automation',
-        'AI business insights',
-        'Unlimited stores',
-        'Custom integrations',
-        'Dedicated account manager',
-        'Advanced analytics',
-        'API access',
-      ],
-      highlighted: false,
-      active: true,
-      userCount: 1710,
-      revenue: 3416580,
-      color: 'orange',
-    },
-  ]);
-
+  const [plans, setPlans] = useState<PricingPlan[]>(defaultPlans);
+  const [isLoading, setIsLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/subscription-plans`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length > 0) {
+          setPlans(data.map((p: any) => ({
+            id: p.id.toString(),
+            name: p.name,
+            displayName: p.displayName || p.name,
+            price: p.price || 0,
+            currency: p.currency || '₹',
+            interval: p.interval || 'month',
+            features: p.features || [],
+            highlighted: p.highlighted || false,
+            active: p.active !== false,
+            userCount: p.userCount || 0,
+            revenue: p.revenue || 0,
+            color: p.color || 'gray',
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const totalUsers = plans.reduce((sum, plan) => sum + plan.userCount, 0);
   const totalRevenue = plans.reduce((sum, plan) => sum + plan.revenue, 0);
 
-  const updatePlanPrice = (planId: string, newPrice: number) => {
+  const updatePlanPrice = async (planId: string, newPrice: number) => {
+    const previousPlans = [...plans];
     setPlans(prev =>
       prev.map(p => (p.id === planId ? { ...p, price: newPrice } : p))
     );
-    toast.success('Plan price updated');
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/subscription-plans/${planId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ price: newPrice }),
+      });
+      
+      if (!res.ok) {
+        setPlans(previousPlans);
+        toast.error('Failed to update plan price');
+      } else {
+        toast.success('Plan price updated');
+      }
+    } catch (error) {
+      setPlans(previousPlans);
+      toast.error('Failed to update plan price');
+    }
   };
 
-  const togglePlanActive = (planId: string) => {
+  const togglePlanActive = async (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    const previousPlans = [...plans];
     setPlans(prev =>
       prev.map(p => (p.id === planId ? { ...p, active: !p.active } : p))
     );
-    toast.success('Plan status updated');
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/subscription-plans/${planId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ active: !plan.active }),
+      });
+      
+      if (!res.ok) {
+        setPlans(previousPlans);
+        toast.error('Failed to update plan status');
+      } else {
+        toast.success('Plan status updated');
+      }
+    } catch (error) {
+      setPlans(previousPlans);
+      toast.error('Failed to update plan status');
+    }
   };
 
-  const addFeature = (planId: string, feature: string) => {
+  const addFeature = async (planId: string, feature: string) => {
     if (!feature.trim()) return;
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    const newFeatures = [...plan.features, feature];
+    const previousPlans = [...plans];
+    
     setPlans(prev =>
       prev.map(p =>
-        p.id === planId ? { ...p, features: [...p.features, feature] } : p
+        p.id === planId ? { ...p, features: newFeatures } : p
       )
     );
-    toast.success('Feature added');
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/subscription-plans/${planId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ features: newFeatures }),
+      });
+      
+      if (!res.ok) {
+        setPlans(previousPlans);
+        toast.error('Failed to add feature');
+      } else {
+        toast.success('Feature added');
+      }
+    } catch (error) {
+      setPlans(previousPlans);
+      toast.error('Failed to add feature');
+    }
   };
 
-  const removeFeature = (planId: string, featureIndex: number) => {
+  const removeFeature = async (planId: string, featureIndex: number) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    const newFeatures = plan.features.filter((_, i) => i !== featureIndex);
+    const previousPlans = [...plans];
+    
     setPlans(prev =>
       prev.map(p =>
-        p.id === planId
-          ? { ...p, features: p.features.filter((_, i) => i !== featureIndex) }
-          : p
+        p.id === planId ? { ...p, features: newFeatures } : p
       )
     );
-    toast.success('Feature removed');
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/subscription-plans/${planId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ features: newFeatures }),
+      });
+      
+      if (!res.ok) {
+        setPlans(previousPlans);
+        toast.error('Failed to remove feature');
+      } else {
+        toast.success('Feature removed');
+      }
+    } catch (error) {
+      setPlans(previousPlans);
+      toast.error('Failed to remove feature');
+    }
   };
 
   const getPlanIcon = (planName: string) => {
