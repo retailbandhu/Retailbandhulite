@@ -2,9 +2,11 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import path from "path";
 import { db } from "./db";
-import { stores, products, customers, bills, khataEntries, expenses, parties } from "../shared/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { stores, products, customers, bills, khataEntries, expenses, parties, users } from "../shared/schema";
+import { eq, desc, and, sql, count, sum } from "drizzle-orm";
 import { setupAuth, isAuthenticated, getUser } from "./replitAuth";
+
+const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
 
 const app = express();
 
@@ -40,6 +42,32 @@ async function verifyStoreOwnership(req: Request, res: Response, next: NextFunct
 
 // Combined middleware for auth + store ownership
 const requireStoreAccess = [isAuthenticated, verifyStoreOwnership];
+
+// Admin middleware - checks if user is an admin
+async function isAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    // Check if user is in admin list or is the first user (super admin)
+    const allUsers = await db.select().from(users).orderBy(users.createdAt);
+    const isFirstUser = allUsers.length > 0 && allUsers[0].id === userId;
+    const isInAdminList = ADMIN_USER_IDS.includes(userId);
+    
+    if (!isFirstUser && !isInAdminList) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Admin check error:", error);
+    res.status(500).json({ error: "Authorization check failed" });
+  }
+}
+
+const requireAdmin = [isAuthenticated, isAdmin];
 
 // Middleware to verify ownership of a resource (product, customer, etc.) via its store
 async function verifyResourceOwnership(
@@ -393,6 +421,178 @@ function registerRoutes() {
     } catch (error) {
       console.error('Error creating party:', error);
       res.status(500).json({ error: "Failed to create party" });
+    }
+  });
+
+  // ============== ADMIN ROUTES ==============
+  
+  // Check if current user is admin
+  app.get("/api/admin/check", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const allUsers = await db.select().from(users).orderBy(users.createdAt);
+      const isFirstUser = allUsers.length > 0 && allUsers[0].id === userId;
+      const isInAdminList = ADMIN_USER_IDS.includes(userId);
+      res.json({ isAdmin: isFirstUser || isInAdminList });
+    } catch (error) {
+      console.error("Admin check error:", error);
+      res.status(500).json({ error: "Failed to check admin status" });
+    }
+  });
+
+  // Get dashboard stats
+  app.get("/api/admin/stats", requireAdmin, async (req: any, res) => {
+    try {
+      const [userCount] = await db.select({ count: count() }).from(users);
+      const [storeCount] = await db.select({ count: count() }).from(stores);
+      const [productCount] = await db.select({ count: count() }).from(products);
+      const [customerCount] = await db.select({ count: count() }).from(customers);
+      const [billCount] = await db.select({ count: count() }).from(bills);
+      
+      // Calculate total revenue from all bills
+      const [revenueResult] = await db.select({ 
+        total: sql<string>`COALESCE(SUM(CAST(${bills.total} AS NUMERIC)), 0)` 
+      }).from(bills);
+      
+      // Get today's bills count
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [todayBills] = await db.select({ count: count() }).from(bills)
+        .where(sql`${bills.createdAt} >= ${today}`);
+
+      res.json({
+        totalUsers: userCount?.count || 0,
+        totalStores: storeCount?.count || 0,
+        totalProducts: productCount?.count || 0,
+        totalCustomers: customerCount?.count || 0,
+        totalBills: billCount?.count || 0,
+        totalRevenue: parseFloat(revenueResult?.total || '0'),
+        todayBills: todayBills?.count || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Get all users with their stores
+  app.get("/api/admin/users", requireAdmin, async (req: any, res) => {
+    try {
+      const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+      
+      // Get stores for each user
+      const usersWithStores = await Promise.all(allUsers.map(async (user) => {
+        const userStores = await db.select().from(stores).where(eq(stores.userId, user.id));
+        return {
+          ...user,
+          stores: userStores,
+          storeCount: userStores.length,
+        };
+      }));
+      
+      res.json(usersWithStores);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get all stores with owner info and stats
+  app.get("/api/admin/stores", requireAdmin, async (req: any, res) => {
+    try {
+      const allStores = await db.select().from(stores).orderBy(desc(stores.createdAt));
+      
+      // Get stats for each store
+      const storesWithStats = await Promise.all(allStores.map(async (store) => {
+        const [productCount] = await db.select({ count: count() }).from(products).where(eq(products.storeId, store.id));
+        const [customerCount] = await db.select({ count: count() }).from(customers).where(eq(customers.storeId, store.id));
+        const [billCount] = await db.select({ count: count() }).from(bills).where(eq(bills.storeId, store.id));
+        const [revenueResult] = await db.select({ 
+          total: sql<string>`COALESCE(SUM(CAST(${bills.total} AS NUMERIC)), 0)` 
+        }).from(bills).where(eq(bills.storeId, store.id));
+        
+        // Get owner info
+        let owner: any = null;
+        if (store.userId) {
+          const [userResult] = await db.select().from(users).where(eq(users.id, store.userId));
+          owner = userResult || null;
+        }
+        
+        return {
+          ...store,
+          owner: owner,
+          productCount: productCount?.count || 0,
+          customerCount: customerCount?.count || 0,
+          billCount: billCount?.count || 0,
+          totalRevenue: parseFloat(revenueResult?.total || '0'),
+        };
+      }));
+      
+      res.json(storesWithStats);
+    } catch (error) {
+      console.error("Error fetching stores:", error);
+      res.status(500).json({ error: "Failed to fetch stores" });
+    }
+  });
+
+  // Get single store details (admin view)
+  app.get("/api/admin/stores/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const storeId = parseInt(req.params.id);
+      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
+      
+      const [store] = await db.select().from(stores).where(eq(stores.id, storeId));
+      if (!store) return res.status(404).json({ error: "Store not found" });
+      
+      // Get all related data
+      const storeProducts = await db.select().from(products).where(eq(products.storeId, storeId));
+      const storeCustomers = await db.select().from(customers).where(eq(customers.storeId, storeId));
+      const storeBills = await db.select().from(bills).where(eq(bills.storeId, storeId)).orderBy(desc(bills.createdAt));
+      
+      res.json({
+        ...store,
+        products: storeProducts,
+        customers: storeCustomers,
+        bills: storeBills,
+      });
+    } catch (error) {
+      console.error("Error fetching store details:", error);
+      res.status(500).json({ error: "Failed to fetch store details" });
+    }
+  });
+
+  // Update store (admin)
+  app.put("/api/admin/stores/:id", requireAdmin, async (req: any, res) => {
+    try {
+      const storeId = parseInt(req.params.id);
+      if (isNaN(storeId)) return res.status(400).json({ error: "Invalid store ID" });
+      
+      const [updated] = await db.update(stores).set(req.body).where(eq(stores.id, storeId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating store:", error);
+      res.status(500).json({ error: "Failed to update store" });
+    }
+  });
+
+  // Get all bills (admin view with store info)
+  app.get("/api/admin/bills", requireAdmin, async (req: any, res) => {
+    try {
+      const allBills = await db.select().from(bills).orderBy(desc(bills.createdAt)).limit(100);
+      
+      // Get store info for each bill
+      const billsWithStores = await Promise.all(allBills.map(async (bill) => {
+        const [store] = await db.select().from(stores).where(eq(stores.id, bill.storeId));
+        return {
+          ...bill,
+          store: store || null,
+        };
+      }));
+      
+      res.json(billsWithStores);
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      res.status(500).json({ error: "Failed to fetch bills" });
     }
   });
 }

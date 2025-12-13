@@ -69,7 +69,7 @@ import {
   Command,
 } from 'lucide-react';
 
-const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-c4099df5/admin`;
+const API_BASE_URL = '/api/admin';
 
 interface AdminPanelProps {
   onNavigate: (screen: Screen) => void;
@@ -147,23 +147,80 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Mock data - replace with real API calls
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Real data from database
   const [stats, setStats] = useState({
-    totalUsers: 15847,
-    activeUsers: 12653,
-    totalRevenue: 847250,
-    monthlyRevenue: 124580,
-    freeUsers: 8245,
-    proUsers: 5892,
-    automationUsers: 1710,
+    totalUsers: 0,
+    totalStores: 0,
+    totalProducts: 0,
+    totalCustomers: 0,
+    totalBills: 0,
+    totalRevenue: 0,
+    todayBills: 0,
     averageSessionTime: '12.5 min',
     errorRate: 0.3,
     apiResponseTime: '245ms',
     systemUptime: '99.98%',
     storageUsed: '34.2 GB',
-    apiCalls: 1245680,
-    conversionRate: 4.2,
   });
+
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [allStores, setAllStores] = useState<any[]>([]);
+  const [allBills, setAllBills] = useState<any[]>([]);
+
+  // Check if user is admin on mount
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/check`, { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setIsAdmin(data.isAdmin);
+          if (data.isAdmin) {
+            fetchAllData();
+          }
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAdmin();
+  }, []);
+
+  const fetchAllData = async () => {
+    try {
+      const [statsRes, usersRes, storesRes, billsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/stats`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/users`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/stores`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/bills`, { credentials: 'include' }),
+      ]);
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(prev => ({ ...prev, ...statsData }));
+      }
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setAllUsers(usersData);
+      }
+      if (storesRes.ok) {
+        const storesData = await storesRes.json();
+        setAllStores(storesData);
+      }
+      if (billsRes.ok) {
+        const billsData = await billsRes.json();
+        setAllBills(billsData);
+      }
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+      toast.error('Failed to fetch admin data');
+    }
+  };
 
   const [systemHealth, setSystemHealth] = useState({
     status: 'healthy',
@@ -185,12 +242,10 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
   }, [activeTab]);
 
   const refreshMetrics = async () => {
-    // Simulate live metrics update
-    setStats(prev => ({
-      ...prev,
-      activeUsers: prev.activeUsers + Math.floor(Math.random() * 20 - 10),
-      apiResponseTime: `${Math.floor(Math.random() * 100 + 200)}ms`,
-    }));
+    if (isAdmin) {
+      await fetchAllData();
+      toast.success('Data refreshed');
+    }
   };
 
   const logAction = (action: string, target: string, details: string, status: 'success' | 'failure' = 'success') => {
@@ -370,111 +425,111 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
 
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Quick Stats */}
+      {/* Quick Stats - Real Data from Database */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center justify-between mb-2">
             <Users className="w-8 h-8 text-blue-600" />
-            <Badge className="bg-blue-600">+12%</Badge>
+            <Badge className="bg-blue-600">Live</Badge>
           </div>
           <div className="text-3xl font-bold text-blue-900 mb-1">
             {stats.totalUsers.toLocaleString()}
           </div>
           <div className="text-sm text-blue-700">Total Users</div>
           <div className="text-xs text-blue-600 mt-2">
-            {stats.activeUsers.toLocaleString()} active today
+            {stats.totalStores.toLocaleString()} stores created
           </div>
         </Card>
 
         <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="w-8 h-8 text-green-600" />
-            <Badge className="bg-green-600">+8%</Badge>
+            <Badge className="bg-green-600">Live</Badge>
           </div>
           <div className="text-3xl font-bold text-green-900 mb-1">
-            ₹{stats.monthlyRevenue.toLocaleString()}
+            ₹{stats.totalRevenue.toLocaleString()}
           </div>
-          <div className="text-sm text-green-700">Monthly Revenue</div>
+          <div className="text-sm text-green-700">Total Revenue</div>
           <div className="text-xs text-green-600 mt-2">
-            ₹{stats.totalRevenue.toLocaleString()} total
+            {stats.totalBills.toLocaleString()} bills generated
           </div>
         </Card>
 
         <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <div className="flex items-center justify-between mb-2">
-            <Activity className="w-8 h-8 text-purple-600" />
-            <Badge className="bg-green-600">Good</Badge>
+            <Package className="w-8 h-8 text-purple-600" />
+            <Badge className="bg-purple-600">Live</Badge>
           </div>
           <div className="text-3xl font-bold text-purple-900 mb-1">
-            {stats.errorRate}%
+            {stats.totalProducts.toLocaleString()}
           </div>
-          <div className="text-sm text-purple-700">Error Rate</div>
+          <div className="text-sm text-purple-700">Total Products</div>
           <div className="text-xs text-purple-600 mt-2">
-            {stats.apiResponseTime} avg response
+            {stats.totalCustomers.toLocaleString()} customers
           </div>
         </Card>
 
         <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp className="w-8 h-8 text-orange-600" />
-            <Badge className="bg-orange-600">Active</Badge>
+            <Badge className="bg-orange-600">Today</Badge>
           </div>
           <div className="text-3xl font-bold text-orange-900 mb-1">
-            {stats.averageSessionTime}
+            {stats.todayBills}
           </div>
-          <div className="text-sm text-orange-700">Avg Session Time</div>
-          <div className="text-xs text-orange-600 mt-2">Per user engagement</div>
+          <div className="text-sm text-orange-700">Bills Today</div>
+          <div className="text-xs text-orange-600 mt-2">System uptime: {stats.systemUptime}</div>
         </Card>
       </div>
 
-      {/* Subscription Distribution */}
+      {/* Store Distribution */}
       <Card className="p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-blue-600" />
-          Subscription Distribution
+          <Database className="w-5 h-5 text-blue-600" />
+          Platform Overview
         </h3>
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Free Plan</span>
+              <span className="text-sm font-medium">Active Stores</span>
               <span className="text-sm text-gray-600">
-                {stats.freeUsers} users ({((stats.freeUsers / stats.totalUsers) * 100).toFixed(1)}%)
-              </span>
-            </div>
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gray-400"
-                style={{ width: `${(stats.freeUsers / stats.totalUsers) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Pro Plan</span>
-              <span className="text-sm text-gray-600">
-                {stats.proUsers} users ({((stats.proUsers / stats.totalUsers) * 100).toFixed(1)}%)
+                {allStores.length} stores
               </span>
             </div>
             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500"
-                style={{ width: `${(stats.proUsers / stats.totalUsers) * 100}%` }}
+                style={{ width: allStores.length > 0 ? '100%' : '0%' }}
               />
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Automation Plan</span>
+              <span className="text-sm font-medium">Registered Users</span>
               <span className="text-sm text-gray-600">
-                {stats.automationUsers} users ({((stats.automationUsers / stats.totalUsers) * 100).toFixed(1)}%)
+                {allUsers.length} users
+              </span>
+            </div>
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500"
+                style={{ width: allUsers.length > 0 ? '100%' : '0%' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Recent Transactions</span>
+              <span className="text-sm text-gray-600">
+                {allBills.length} bills (last 100)
               </span>
             </div>
             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-orange-500"
-                style={{ width: `${(stats.automationUsers / stats.totalUsers) * 100}%` }}
+                style={{ width: allBills.length > 0 ? `${Math.min(allBills.length, 100)}%` : '0%' }}
               />
             </div>
           </div>
@@ -522,6 +577,15 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     </div>
   );
 
+  const filteredUsers = allUsers.filter(user => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
+    return fullName.includes(query) || 
+           (user.email || '').toLowerCase().includes(query) ||
+           user.stores?.some((s: any) => s.name.toLowerCase().includes(query));
+  });
+
   const renderUsers = () => (
     <div className="space-y-6">
       {/* Search & Filters */}
@@ -536,9 +600,9 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
               className="pl-10"
             />
           </div>
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
+          <Button variant="outline" onClick={refreshMetrics}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </Button>
           <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
@@ -547,94 +611,70 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
         </div>
       </Card>
 
-      {/* Users Table */}
+      {/* Users Table - Real Data */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">All Users ({users.length})</h3>
-          <Button size="sm" className="bg-blue-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Add User
-          </Button>
+          <h3 className="font-bold text-lg">All Users ({allUsers.length})</h3>
+          <Badge className="bg-green-600">Live Data</Badge>
         </div>
 
-        <div className="space-y-3">
-          {users.map((user) => (
-            <Card key={user.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                    {user.name.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-gray-900">{user.name}</span>
-                      <Badge
-                        className={
-                          user.plan === 'automation'
-                            ? 'bg-orange-500'
-                            : user.plan === 'pro'
-                            ? 'bg-blue-500'
-                            : 'bg-gray-400'
-                        }
-                      >
-                        {user.plan.toUpperCase()}
-                      </Badge>
-                      <Badge
-                        variant={user.status === 'active' ? 'default' : 'secondary'}
-                        className={
-                          user.status === 'active'
-                            ? 'bg-green-500'
-                            : user.status === 'trial'
-                            ? 'bg-yellow-500'
-                            : 'bg-red-500'
-                        }
-                      >
-                        {user.status}
-                      </Badge>
+        {allUsers.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No users found in database</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredUsers.map((user) => (
+              <Card key={user.id} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                      {(user.firstName || user.email || 'U').charAt(0).toUpperCase()}
                     </div>
-                    <div className="text-sm text-gray-600 space-y-0.5">
-                      <div>{user.storeName}</div>
-                      <div className="flex items-center gap-4">
-                        <span>{user.email}</span>
-                        <span>{user.phone}</span>
-                        <span>Joined: {user.joinedDate}</span>
-                        <span>Last active: {user.lastActive}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-gray-900">
+                          {user.firstName && user.lastName 
+                            ? `${user.firstName} ${user.lastName}` 
+                            : user.email || 'Unknown User'}
+                        </span>
+                        <Badge className="bg-blue-500">
+                          {user.storeCount} store{user.storeCount !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-0.5">
+                        <div>{user.email || 'No email'}</div>
+                        <div className="flex items-center gap-4">
+                          <span>Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</span>
+                          {user.stores?.length > 0 && (
+                            <span>Store: {user.stores[0].name}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="text-right mr-4">
-                    <div className="font-bold text-green-600">₹{user.revenue}</div>
-                    <div className="text-xs text-gray-500">Total Revenue</div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (user.stores?.length > 0) {
+                          toast.info(`User has ${user.storeCount} store(s): ${user.stores.map((s: any) => s.name).join(', ')}`);
+                        } else {
+                          toast.info('User has no stores');
+                        }
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.info('Viewing user details...')}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => suspendUser(user.id)}
-                  >
-                    {user.status === 'suspended' ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-red-600" />
-                    )}
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -1142,6 +1182,37 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     </div>
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading Admin Panel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Access denied state
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8 max-w-md text-center">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-6">
+            You don't have permission to access the Admin Panel. 
+            Only the first registered user or designated admins can access this area.
+          </p>
+          <Button onClick={() => onNavigate('marketing')} className="bg-blue-600">
+            ← Back to Home
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -1167,8 +1238,16 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
             <div className="flex items-center gap-3">
               <Badge className="bg-white/20 text-white">
                 <Activity className="w-3 h-3 mr-1" />
-                {stats.activeUsers.toLocaleString()} online
+                {stats.totalUsers} users
               </Badge>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-white/20"
+                onClick={refreshMetrics}
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
               {appConfig.maintenanceMode && (
                 <Badge className="bg-red-500">
                   <AlertTriangle className="w-3 h-3 mr-1" />
