@@ -39,7 +39,6 @@
             "@types/memoizee": "^0.4.12",
             "@types/passport": "^1.0.17",
             "@types/pg": "^8.16.0",
-            "@vercel/node": "^5.5.15",
             "@vitejs/plugin-react": "*",
             "class-variance-authority": "^0.7.1",
             "clsx": "*",
