@@ -23,13 +23,17 @@ retail-bandhu-lite/
 │   │   ├── Dashboard.tsx    # Main dashboard
 │   │   ├── EnhancedBillingScreen.tsx  # Voice billing
 │   │   └── ... (30+ more screens)
+│   ├── routes/              # Route Separation (Play Store Ready)
+│   │   ├── LandingRoutes.tsx  # Marketing pages at /
+│   │   ├── AppRoutes.tsx      # Main kirana app at /app/*
+│   │   └── AdminRoutes.tsx    # Admin panel at /admin/*
 │   ├── utils/
 │   │   ├── storage.ts       # LocalStorage management
 │   │   ├── api.ts           # API client for database
 │   │   ├── gst.ts           # GST calculations
 │   │   ├── loyalty.ts       # Loyalty program logic
 │   │   └── translations.ts  # Multi-language support
-│   ├── App.tsx              # Main router
+│   ├── App.tsx              # Main router with 3 route sections
 │   └── main.tsx             # Entry point
 ├── server/
 │   ├── index.ts             # Express API server
@@ -41,6 +45,15 @@ retail-bandhu-lite/
 ├── vite.config.ts           # Vite configuration
 └── package.json             # Dependencies
 ```
+
+## Route Structure (Play Store Ready)
+The app is separated into three distinct flows:
+- **Landing Page (`/`)** - Marketing website (About, Blog, Careers, Contact, Videos, FAQ)
+- **Main App (`/app/*`)** - Kirana store app for Play Store PWA deployment
+- **Admin Panel (`/admin/*`)** - Protected admin dashboard
+
+All `/app` routes are protected by RequireAuth component that redirects to login.
+PWA manifest configured with `start_url: /app` and `scope: /app` for Play Store deployment.
 
 ## Key Features
 1. **Voice Billing** - Speak in Hinglish ("2 Maggi aur 1 Pepsi")
@@ -81,6 +94,9 @@ PostgreSQL database with Drizzle ORM. Tables:
 - **Mobile-First:** Designed primarily for mobile usage by shopkeepers
 
 ## Recent Changes
+- **Route Separation for Play Store**: Separated app into three flows - Landing (marketing), Main App (/app), Admin Panel (/admin) with RequireAuth guards on all protected routes
+- **PWA manifest updated**: start_url=/app and scope=/app for Play Store deployment, shortcuts updated to /app/* paths
+- **Service worker updated**: Cache includes /app routes for offline capability
 - **Offline sync queue**: Automatic background sync when online, queue pending changes when offline, SyncStatus indicator in Dashboard
 - **Code-splitting implemented**: React.lazy loading for 35+ components, reducing initial bundle from 1,371KB to 256KB (81% reduction)
 - **Real voice billing**: Web Speech API with Hinglish support (en-IN, hi-IN languages), intelligent fuzzy product matching
