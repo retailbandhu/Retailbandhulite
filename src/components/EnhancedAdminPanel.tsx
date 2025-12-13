@@ -653,13 +653,13 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
         </div>
       </Card>
 
-      {Object.entries(
+      {(Object.entries(
         featureFlags.reduce((acc, flag) => {
           if (!acc[flag.category]) acc[flag.category] = [];
           acc[flag.category].push(flag);
           return acc;
         }, {} as Record<string, FeatureFlag[]>)
-      ).map(([category, flags]) => (
+      ) as [string, FeatureFlag[]][]).map(([category, flags]) => (
         <Card key={category} className="p-6">
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-blue-600" />

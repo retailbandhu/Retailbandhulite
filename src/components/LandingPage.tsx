@@ -577,14 +577,20 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-gray-400 text-sm">© 2024 Retail Bandhu Lite. All rights reserved.</p>
               <div className="flex items-center gap-4">
-                <button className="text-gray-400 hover:text-white transition text-sm">
+                <button 
+                  onClick={() => toast.info('Privacy Policy coming soon!')}
+                  className="text-gray-400 hover:text-white transition text-sm"
+                >
                   Privacy Policy
                 </button>
-                <button className="text-gray-400 hover:text-white transition text-sm">
+                <button 
+                  onClick={() => toast.info('Terms of Service coming soon!')}
+                  className="text-gray-400 hover:text-white transition text-sm"
+                >
                   Terms of Service
                 </button>
                 <button 
-                  onClick={() => onNavigate('admin-panel')}
+                  onClick={() => onNavigate?.('admin-panel')}
                   className="text-gray-700 hover:text-gray-400 transition text-xs opacity-30 hover:opacity-100"
                 >
                   Admin
