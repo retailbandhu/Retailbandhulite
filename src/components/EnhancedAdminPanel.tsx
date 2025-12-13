@@ -1229,10 +1229,55 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
 
   const renderDatabase = () => (
     <div className="space-y-6">
+      {/* Database Stats - Real Data */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <Database className="w-5 h-5 text-blue-600" />
+            Database Statistics
+          </h3>
+          <Badge className="bg-green-500">Live Data</Badge>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-blue-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.totalUsers}</div>
+            <div className="text-sm text-gray-600">Users</div>
+          </div>
+          <div className="p-4 bg-green-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-green-600">{stats.totalStores}</div>
+            <div className="text-sm text-gray-600">Stores</div>
+          </div>
+          <div className="p-4 bg-purple-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-purple-600">{stats.totalProducts.toLocaleString()}</div>
+            <div className="text-sm text-gray-600">Products</div>
+          </div>
+          <div className="p-4 bg-orange-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-orange-600">{stats.totalCustomers.toLocaleString()}</div>
+            <div className="text-sm text-gray-600">Customers</div>
+          </div>
+          <div className="p-4 bg-pink-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-pink-600">{stats.totalBills.toLocaleString()}</div>
+            <div className="text-sm text-gray-600">Bills</div>
+          </div>
+          <div className="p-4 bg-teal-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-teal-600">₹{stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-sm text-gray-600">Total Revenue</div>
+          </div>
+          <div className="p-4 bg-indigo-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-indigo-600">{stats.todayBills}</div>
+            <div className="text-sm text-gray-600">Bills Today</div>
+          </div>
+          <div className="p-4 bg-gray-50 rounded-lg text-center">
+            <div className="text-2xl font-bold text-gray-600">{allBills.length}</div>
+            <div className="text-sm text-gray-600">Recent Bills</div>
+          </div>
+        </div>
+      </Card>
+
       <Card className="p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
           <Server className="w-5 h-5 text-blue-600" />
-          Database Management
+          System Health
         </h3>
 
         <div className="space-y-6">
@@ -1242,7 +1287,7 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
               <div>
                 <h4 className="font-bold text-gray-900">Database Health</h4>
                 <p className="text-sm text-gray-600">
-                  Check the status of the database
+                  PostgreSQL database status
                 </p>
               </div>
               <Badge
@@ -1545,7 +1590,7 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
             {activeTab === 'system' && renderSystem()}
             {activeTab === 'content' && <AdminContentCMS />}
             {activeTab === 'subscriptions' && <AdminSubscriptionManagement />}
-            {activeTab === 'analytics' && <AdminAnalyticsAdvanced />}
+            {activeTab === 'analytics' && <AdminAnalyticsAdvanced stats={stats} bills={allBills} stores={allStores} users={allUsers} />}
             {activeTab === 'security' && <AdminSecurityPanel />}
             {activeTab === 'notifications' && <AdminBulkOperations />}
             {activeTab === 'api' && <AdminAPIIntegrations />}
