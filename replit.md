@@ -94,6 +94,12 @@ PostgreSQL database with Drizzle ORM. Tables:
 - **Mobile-First:** Designed primarily for mobile usage by shopkeepers
 
 ## Recent Changes
+- **Admin Panel Database Integration**: Connected Admin Panel to real PostgreSQL database with live data
+  - Real-time dashboard with actual user/store/bill counts from database
+  - Store management tab with view/edit functionality for all stores
+  - User management showing real registered users with their stores
+  - Revenue and transaction tracking from actual billing data
+  - Admin authentication (first registered user = super admin, or ADMIN_USER_IDS env var)
 - **Route Separation for Play Store**: Separated app into three flows - Landing (marketing), Main App (/app), Admin Panel (/admin) with RequireAuth guards on all protected routes
 - **PWA manifest updated**: start_url=/app and scope=/app for Play Store deployment, shortcuts updated to /app/* paths
 - **Service worker updated**: Cache includes /app routes for offline capability
@@ -150,3 +156,12 @@ PostgreSQL database with Drizzle ORM. Tables:
 - `GET/POST /api/stores/:storeId/expenses` - Expense tracking
 - `GET/POST /api/stores/:storeId/parties` - Supplier management
 - `GET /api/health` - API health check
+
+**Admin APIs (protected by requireAdmin middleware):**
+- `GET /api/admin/check` - Check if current user is admin
+- `GET /api/admin/stats` - Dashboard stats (users, stores, products, customers, bills, revenue)
+- `GET /api/admin/users` - Get all users with their stores
+- `GET /api/admin/stores` - Get all stores with owner info and stats
+- `GET /api/admin/stores/:id` - Get single store details with products/customers/bills
+- `PUT /api/admin/stores/:id` - Update store (admin edit)
+- `GET /api/admin/bills` - Get all bills with store info (last 100)
