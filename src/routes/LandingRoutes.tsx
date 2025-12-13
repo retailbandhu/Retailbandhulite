@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 
 const MarketingHub = lazy(() => import('../components/MarketingHub').then(m => ({ default: m.MarketingHub })));
 const AboutUs = lazy(() => import('../components/AboutUs').then(m => ({ default: m.AboutUs })));
@@ -25,16 +25,28 @@ interface LandingRoutesProps {
 }
 
 export function LandingRoutes({ onStartApp }: LandingRoutesProps) {
+  const navigate = useNavigate();
+  
+  const handleNavigate = (page: string) => {
+    if (page === 'about') navigate('/about');
+    else if (page === 'blog') navigate('/blog');
+    else if (page === 'careers') navigate('/careers');
+    else if (page === 'contact') navigate('/contact');
+    else if (page === 'videos') navigate('/videos');
+    else if (page === 'faq') navigate('/faq');
+    else if (page === 'landing') navigate('/');
+  };
+  
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         <Route path="/" element={<MarketingHub onStartApp={onStartApp} />} />
-        <Route path="/about" element={<AboutUs onNavigate={() => {}} />} />
-        <Route path="/blog" element={<BlogPage onNavigate={() => {}} />} />
-        <Route path="/careers" element={<CareersPage onNavigate={() => {}} />} />
-        <Route path="/contact" element={<ContactPage onNavigate={() => {}} />} />
-        <Route path="/videos" element={<VideoPage onNavigate={() => {}} />} />
-        <Route path="/faq" element={<FAQPage onNavigate={() => {}} />} />
+        <Route path="/about" element={<AboutUs onNavigate={handleNavigate} onBack={() => navigate('/')} onGetStarted={onStartApp} />} />
+        <Route path="/blog" element={<BlogPage onNavigate={handleNavigate} onBack={() => navigate('/')} />} />
+        <Route path="/careers" element={<CareersPage onNavigate={handleNavigate} onBack={() => navigate('/')} />} />
+        <Route path="/contact" element={<ContactPage onNavigate={handleNavigate} onBack={() => navigate('/')} />} />
+        <Route path="/videos" element={<VideoPage onBackToHome={() => navigate('/')} onNavigateToFAQ={() => navigate('/faq')} />} />
+        <Route path="/faq" element={<FAQPage onBackToHome={() => navigate('/')} onNavigateToVideos={() => navigate('/videos')} />} />
       </Routes>
     </Suspense>
   );

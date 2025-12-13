@@ -78,6 +78,29 @@ function LoadingSpinner() {
   );
 }
 
+interface RequireAuthProps {
+  children: React.ReactNode;
+  isAuthenticated: boolean;
+  isStoreSetup: boolean;
+  authLoading: boolean;
+}
+
+function RequireAuth({ children, isAuthenticated, isStoreSetup, authLoading }: RequireAuthProps) {
+  if (authLoading) {
+    return <LoadingSpinner />;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/app/login" replace />;
+  }
+  
+  if (!isStoreSetup) {
+    return <Navigate to="/app/store-setup" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 export function AppRoutes() {
   const navigate = useNavigate();
   const { user, store, loading: authLoading, logout } = useAuth();
@@ -153,19 +176,20 @@ export function AppRoutes() {
       
       <Routes>
         <Route path="/" element={
-          !isAuthenticated ? <Navigate to="/app/login" replace /> :
-          !isStoreSetup ? <Navigate to="/app/store-setup" replace /> :
-          <Dashboard 
-            onNavigate={handleNavigate} 
-            storeInfo={storeInfo}
-            onToggleAI={() => setShowAiAssistant(!showAiAssistant)}
-            onToggleQuickActions={() => setShowQuickActions(!showQuickActions)}
-            products={products}
-            onLogout={logout}
-          />
+          <RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}>
+            <Dashboard 
+              onNavigate={handleNavigate} 
+              storeInfo={storeInfo}
+              onToggleAI={() => setShowAiAssistant(!showAiAssistant)}
+              onToggleQuickActions={() => setShowQuickActions(!showQuickActions)}
+              products={products}
+              onLogout={logout}
+            />
+          </RequireAuth>
         } />
         <Route path="/login" element={<LoginScreen onLoginComplete={() => navigate('/app')} />} />
         <Route path="/store-setup" element={
+          !isAuthenticated ? <Navigate to="/app/login" replace /> :
           <StoreSetup 
             onComplete={(info) => {
               setStoreInfo(info);
@@ -176,38 +200,40 @@ export function AppRoutes() {
           />
         } />
         <Route path="/billing" element={
-          <EnhancedBillingScreen 
-            onNavigate={handleNavigate} 
-            products={products}
-            currentBill={currentBill}
-            setCurrentBill={setCurrentBill}
-            setProducts={setProducts}
-          />
+          <RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}>
+            <EnhancedBillingScreen 
+              onNavigate={handleNavigate} 
+              products={products}
+              currentBill={currentBill}
+              setCurrentBill={setCurrentBill}
+              setProducts={setProducts}
+            />
+          </RequireAuth>
         } />
-        <Route path="/bill-preview" element={<BillPreview onNavigate={handleNavigate} bill={currentBill} storeInfo={storeInfo} />} />
-        <Route path="/inventory" element={<InventoryScreen onNavigate={handleNavigate} products={products} setProducts={setProducts} />} />
-        <Route path="/catalog" element={<CatalogCreator onNavigate={handleNavigate} products={products} storeInfo={storeInfo} />} />
-        <Route path="/reports" element={<ReportsScreen onNavigate={handleNavigate} />} />
-        <Route path="/settings" element={<SettingsScreen onNavigate={handleNavigate} storeInfo={storeInfo} setStoreInfo={setStoreInfo} />} />
-        <Route path="/whatsapp" element={<WhatsAppAutomation onNavigate={handleNavigate} />} />
-        <Route path="/subscription" element={<SubscriptionPage onNavigate={handleNavigate} />} />
-        <Route path="/bill-template" element={<CustomBillTemplate onNavigate={handleNavigate} storeInfo={storeInfo} setStoreInfo={setStoreInfo} />} />
-        <Route path="/khata" element={<KhataManagement onNavigate={handleNavigate} />} />
-        <Route path="/expenses" element={<ExpenseTracker onNavigate={handleNavigate} />} />
-        <Route path="/notifications" element={<NotificationCenter onNavigate={handleNavigate} />} />
-        <Route path="/sales-history" element={<SalesHistory onNavigate={handleNavigate} />} />
-        <Route path="/business-insights" element={<BusinessInsights onNavigate={handleNavigate} />} />
-        <Route path="/quick-pos" element={<QuickPOSMode onNavigate={handleNavigate} products={products} setProducts={setProducts} />} />
-        <Route path="/customers" element={<CustomerManagement onNavigate={handleNavigate} />} />
-        <Route path="/barcode-scanner" element={<BarcodeScanner onNavigate={handleNavigate} products={products} setProducts={setProducts} />} />
-        <Route path="/parties" element={<PartyManagement onNavigate={handleNavigate} />} />
-        <Route path="/gst-settings" element={<GSTSettings onNavigate={handleNavigate} storeInfo={storeInfo} setStoreInfo={setStoreInfo} />} />
-        <Route path="/loyalty-program" element={<LoyaltyProgram onNavigate={handleNavigate} />} />
-        <Route path="/data-backup" element={<DataBackup onNavigate={handleNavigate} />} />
-        <Route path="/reorder-alerts" element={<ReorderAlerts onNavigate={handleNavigate} />} />
-        <Route path="/system-health" element={<SystemHealthMonitor onNavigate={handleNavigate} />} />
-        <Route path="/language-switcher" element={<LanguageSwitcher onNavigate={handleNavigate} />} />
-        <Route path="/printer-setup" element={<PrinterSetup onNavigate={handleNavigate} />} />
+        <Route path="/bill-preview" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><BillPreview onNavigate={handleNavigate} bill={currentBill} storeInfo={storeInfo} /></RequireAuth>} />
+        <Route path="/inventory" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><InventoryScreen onNavigate={handleNavigate} products={products} setProducts={setProducts} /></RequireAuth>} />
+        <Route path="/catalog" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><CatalogCreator onNavigate={handleNavigate} products={products} storeInfo={storeInfo} /></RequireAuth>} />
+        <Route path="/reports" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><ReportsScreen onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/settings" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><SettingsScreen onNavigate={handleNavigate} storeInfo={storeInfo} setStoreInfo={setStoreInfo} /></RequireAuth>} />
+        <Route path="/whatsapp" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><WhatsAppAutomation onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/subscription" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><SubscriptionPage onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/bill-template" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><CustomBillTemplate onNavigate={handleNavigate} storeInfo={storeInfo} setStoreInfo={setStoreInfo} /></RequireAuth>} />
+        <Route path="/khata" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><KhataManagement onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/expenses" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><ExpenseTracker onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/notifications" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><NotificationCenter onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/sales-history" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><SalesHistory onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/business-insights" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><BusinessInsights onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/quick-pos" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><QuickPOSMode onNavigate={handleNavigate} products={products} setProducts={setProducts} /></RequireAuth>} />
+        <Route path="/customers" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><CustomerManagement onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/barcode-scanner" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><BarcodeScanner onNavigate={handleNavigate} products={products} setProducts={setProducts} /></RequireAuth>} />
+        <Route path="/parties" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><PartyManagement onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/gst-settings" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><GSTSettings onNavigate={handleNavigate} storeInfo={storeInfo} setStoreInfo={setStoreInfo} /></RequireAuth>} />
+        <Route path="/loyalty-program" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><LoyaltyProgram onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/data-backup" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><DataBackup onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/reorder-alerts" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><ReorderAlerts onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/system-health" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><SystemHealthMonitor onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/language-switcher" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><LanguageSwitcher onNavigate={handleNavigate} /></RequireAuth>} />
+        <Route path="/printer-setup" element={<RequireAuth isAuthenticated={isAuthenticated} isStoreSetup={isStoreSetup} authLoading={authLoading}><PrinterSetup onNavigate={handleNavigate} /></RequireAuth>} />
       </Routes>
     </Suspense>
   );
