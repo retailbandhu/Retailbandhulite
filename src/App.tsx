@@ -76,8 +76,8 @@ function AppContent() {
       {/* Main App - Kirana Store App (PWA for Play Store) */}
       <Route path="/app/*" element={<AppRoutes />} />
       
-      {/* Admin Panel - Protected Admin Dashboard */}
-      <Route path="/admin/*" element={<AdminRoutes isAuthenticated={!!user} isAdmin={true} />} />
+      {/* Admin Panel - Separate Admin Dashboard with own login */}
+      <Route path="/admin/*" element={<AdminRoutes />} />
     </Routes>
   );
 }

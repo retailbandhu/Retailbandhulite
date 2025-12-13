@@ -1,7 +1,8 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 const EnhancedAdminPanel = lazy(() => import('../components/EnhancedAdminPanel').then(m => ({ default: m.EnhancedAdminPanel })));
+const AdminLogin = lazy(() => import('../components/AdminLogin').then(m => ({ default: m.AdminLogin })));
 
 function LoadingSpinner() {
   return (
@@ -14,39 +15,27 @@ function LoadingSpinner() {
   );
 }
 
-interface AdminRoutesProps {
-  isAuthenticated: boolean;
-  isAdmin?: boolean;
-}
-
-export function AdminRoutes({ isAuthenticated, isAdmin = true }: AdminRoutesProps) {
+export function AdminRoutes() {
   const navigate = useNavigate();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/app/login" replace />;
-  }
-  
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-red-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
-          <div className="text-6xl mb-4">🔒</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-6">You don't have permission to access the Admin Panel.</p>
-          <button 
-            onClick={() => navigate('/app')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Go to App
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    return localStorage.getItem('adminAuthenticated') === 'true';
+  });
+
+  const handleAdminLogin = () => {
+    setIsAdminAuthenticated(true);
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('adminAuthenticated');
+    localStorage.removeItem('adminEmail');
+    setIsAdminAuthenticated(false);
+  };
 
   const handleNavigate = (screen: string) => {
-    if (screen === 'dashboard') {
-      navigate('/app');
+    if (screen === 'dashboard' || screen === 'marketing') {
+      navigate('/');
+    } else if (screen === 'admin-logout') {
+      handleAdminLogout();
     } else {
       navigate(`/app/${screen}`);
     }
@@ -55,8 +44,21 @@ export function AdminRoutes({ isAuthenticated, isAdmin = true }: AdminRoutesProp
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
-        <Route path="/" element={<EnhancedAdminPanel onNavigate={handleNavigate} />} />
-        <Route path="/*" element={<EnhancedAdminPanel onNavigate={handleNavigate} />} />
+        <Route path="/login" element={
+          isAdminAuthenticated ? 
+            <Navigate to="/admin" replace /> : 
+            <AdminLogin onLoginSuccess={handleAdminLogin} onBack={() => navigate('/')} />
+        } />
+        <Route path="/" element={
+          isAdminAuthenticated ? 
+            <EnhancedAdminPanel onNavigate={handleNavigate} /> : 
+            <Navigate to="/admin/login" replace />
+        } />
+        <Route path="/*" element={
+          isAdminAuthenticated ? 
+            <EnhancedAdminPanel onNavigate={handleNavigate} /> : 
+            <Navigate to="/admin/login" replace />
+        } />
       </Routes>
     </Suspense>
   );
