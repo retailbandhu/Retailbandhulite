@@ -7,7 +7,7 @@ import { ContactPage } from './ContactPage';
 import { VideoPage } from './VideoPage';
 import { FAQPage } from './FAQPage';
 import { EnhancedAdminPanel } from './EnhancedAdminPanel';
-import { Screen } from '../App';
+import { Screen } from '../types';
 
 interface MarketingHubProps {
   onStartApp: () => void;

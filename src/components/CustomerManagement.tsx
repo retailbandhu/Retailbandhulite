@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Plus, Phone, Mail, MapPin, ShoppingBag, Calendar, TrendingUp, Edit, Trash2, Download, MessageCircle, Filter, X } from 'lucide-react';
-import { Screen } from '../App';
+import { ArrowLeft, Search, Plus, Phone, Mail, MapPin, ShoppingBag, Calendar, TrendingUp, Edit, Trash2, Download, MessageCircle, Filter, X, Mic } from 'lucide-react';
+import type { Screen } from '../types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { VoiceInput } from './VoiceInput';
+import { VoiceButton } from './VoiceButton';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
+import { speak } from '../utils/speech';
+import { Card } from './ui/card';
+import { Badge } from './ui/badge';
+import { useCustomers } from '../hooks/useCustomers';
+import { LoadingSpinner, ErrorMessage, EmptyState } from './LoadingStates';
 
 interface Customer {
   id: string;
@@ -24,10 +31,12 @@ interface CustomerManagementProps {
 }
 
 export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
+  // Use customers hook for async data management
+  const { customers: customersData, loading, error, addCustomer, updateCustomer, deleteCustomer, searchCustomers, refresh } = useCustomers();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | 'vip' | 'regular' | 'new'>('all');
   const [showFilters, setShowFilters] = useState(false);
   
@@ -37,63 +46,8 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
 
-  // Load customers from storage
-  useEffect(() => {
-    const savedCustomers = storage.getCustomers();
-    if (savedCustomers.length > 0) {
-      setCustomers(savedCustomers);
-    } else {
-      // Set default customers on first load
-      const defaultCustomers: Customer[] = [
-        {
-          id: '1',
-          name: 'Ramesh Kumar',
-          phone: '+91 98765 43210',
-          email: 'ramesh@email.com',
-          address: 'Shop 12, Main Market, Delhi',
-          totalPurchases: 45,
-          totalSpent: 12500,
-          lastVisit: '2024-11-13',
-          visits: 45,
-          status: 'vip'
-        },
-        {
-          id: '2',
-          name: 'Sunita Devi',
-          phone: '+91 98765 43211',
-          address: 'House 23, Green Colony',
-          totalPurchases: 28,
-          totalSpent: 8900,
-          lastVisit: '2024-11-12',
-          visits: 28,
-          status: 'regular'
-        },
-        {
-          id: '3',
-          name: 'Priya Sharma',
-          phone: '+91 98765 43212',
-          email: 'priya@email.com',
-          totalPurchases: 12,
-          totalSpent: 3400,
-          lastVisit: '2024-11-11',
-          visits: 12,
-          status: 'regular'
-        },
-        {
-          id: '4',
-          name: 'Vijay Singh',
-          phone: '+91 98765 43213',
-          totalPurchases: 3,
-          totalSpent: 850,
-          lastVisit: '2024-11-10',
-          visits: 3,
-          status: 'new'
-        }
-      ];
-      setCustomers(defaultCustomers);
-      storage.setCustomers(defaultCustomers);
-    }
-  }, []);
+  // Get customers from hook (with fallback)
+  const customers = customersData.length > 0 ? customersData : storage.getCustomers();
 
   const handleAddCustomer = () => {
     // Validation
@@ -121,9 +75,7 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
     };
 
     // Add to list
-    const updatedCustomers = [...customers, newCustomer];
-    setCustomers(updatedCustomers);
-    storage.setCustomers(updatedCustomers);
+    addCustomer(newCustomer);
 
     // Reset form
     setNewCustomerName('');
@@ -138,9 +90,7 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
   const handleDeleteCustomer = (id: string) => {
     const customer = customers.find(c => c.id === id);
     if (customer && confirm(`Delete ${customer.name}?`)) {
-      const updatedCustomers = customers.filter(c => c.id !== id);
-      setCustomers(updatedCustomers);
-      storage.setCustomers(updatedCustomers);
+      deleteCustomer(id);
       setSelectedCustomer(null);
       toast.success('Customer deleted');
     }
@@ -202,6 +152,48 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
   const totalCustomers = customers.length;
   const vipCustomers = customers.filter(c => c.status === 'vip').length;
   const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Customer Management</h1>
+            <div className="w-6 h-6" />
+          </div>
+          <p className="text-white/90 text-center">Apne customers ko manage karein</p>
+        </div>
+        <div className="px-6 pt-6">
+          <LoadingSpinner message="Loading customers..." />
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Customer Management</h1>
+            <div className="w-6 h-6" />
+          </div>
+          <p className="text-white/90 text-center">Apne customers ko manage karein</p>
+        </div>
+        <div className="px-6 pt-6">
+          <ErrorMessage message={error} retry={refresh} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
@@ -327,75 +319,86 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
         {/* Customers List */}
         <div className="space-y-3">
           <h3 className="text-gray-900">All Customers ({filteredCustomers.length})</h3>
-          {filteredCustomers.map((customer) => (
-            <div 
-              key={customer.id} 
-              onClick={() => setSelectedCustomer(customer)}
-              className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h4 className="text-gray-900">{customer.name}</h4>
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusColors[customer.status]}`}>
-                      {statusIcons[customer.status]} {customer.status.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center text-gray-600 text-sm">
-                      <Phone className="w-3 h-3 mr-2" />
-                      {customer.phone}
+          
+          {filteredCustomers.length === 0 ? (
+            <EmptyState
+              icon="👥"
+              title="No customers found"
+              description={searchQuery ? "Try a different search term" : "Add your first customer to get started!"}
+              actionLabel="Add Customer"
+              action={() => setShowAddModal(true)}
+            />
+          ) : (
+            filteredCustomers.map((customer) => (
+              <div 
+                key={customer.id} 
+                onClick={() => setSelectedCustomer(customer)}
+                className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h4 className="text-gray-900">{customer.name}</h4>
+                      <span className={`text-xs px-2 py-1 rounded-full ${statusColors[customer.status]}`}>
+                        {statusIcons[customer.status]} {customer.status.toUpperCase()}
+                      </span>
                     </div>
-                    {customer.email && (
+                    <div className="space-y-1">
                       <div className="flex items-center text-gray-600 text-sm">
-                        <Mail className="w-3 h-3 mr-2" />
-                        {customer.email}
+                        <Phone className="w-3 h-3 mr-2" />
+                        {customer.phone}
                       </div>
-                    )}
-                    {customer.address && (
-                      <div className="flex items-center text-gray-500 text-xs">
-                        <MapPin className="w-3 h-3 mr-2" />
-                        {customer.address}
-                      </div>
-                    )}
+                      {customer.email && (
+                        <div className="flex items-center text-gray-600 text-sm">
+                          <Mail className="w-3 h-3 mr-2" />
+                          {customer.email}
+                        </div>
+                      )}
+                      {customer.address && (
+                        <div className="flex items-center text-gray-500 text-xs">
+                          <MapPin className="w-3 h-3 mr-2" />
+                          {customer.address}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-100">
+                  <div className="text-center">
+                    <p className="text-[#1E88E5]">{customer.totalPurchases}</p>
+                    <p className="text-gray-500 text-xs">Purchases</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-green-600">₹{customer.totalSpent.toLocaleString()}</p>
+                    <p className="text-gray-500 text-xs">Total Spent</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-purple-600">{customer.visits}</p>
+                    <p className="text-gray-500 text-xs">Visits</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center text-gray-500 text-xs">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    Last visit: {customer.lastVisit}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button className="text-[#1E88E5] hover:bg-blue-50 p-2 rounded-lg transition-colors">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button 
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                      onClick={() => handleDeleteCustomer(customer.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-100">
-                <div className="text-center">
-                  <p className="text-[#1E88E5]">{customer.totalPurchases}</p>
-                  <p className="text-gray-500 text-xs">Purchases</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-green-600">₹{customer.totalSpent.toLocaleString()}</p>
-                  <p className="text-gray-500 text-xs">Total Spent</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-purple-600">{customer.visits}</p>
-                  <p className="text-gray-500 text-xs">Visits</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                <div className="flex items-center text-gray-500 text-xs">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  Last visit: {customer.lastVisit}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button className="text-[#1E88E5] hover:bg-blue-50 p-2 rounded-lg transition-colors">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                    onClick={() => handleDeleteCustomer(customer.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Insights */}
@@ -418,9 +421,15 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
       {/* Add Customer Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl text-gray-900">Add New Customer</h2>
+              <div>
+                <h2 className="text-xl text-gray-900">Add New Customer</h2>
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-blue-600" />
+                  Voice enabled - Type ya bolo!
+                </p>
+              </div>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400">
                 ✕
               </button>
@@ -428,45 +437,78 @@ export function CustomerManagement({ onNavigate }: CustomerManagementProps) {
 
             <div className="space-y-4">
               <div>
-                <label className="text-gray-700 text-sm mb-2 block">Customer Name *</label>
-                <Input 
-                  type="text" 
-                  placeholder="Enter name" 
+                <label className="text-gray-700 text-sm mb-2 block flex items-center gap-2">
+                  Customer Name *
+                  <Badge variant="outline" className="text-xs">Voice</Badge>
+                </label>
+                <VoiceInput
+                  type="text"
+                  placeholder="Type or speak name..."
                   className="h-12"
                   value={newCustomerName}
-                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  onChange={setNewCustomerName}
+                  voiceType="text"
+                  voiceLabel="Customer name"
                 />
               </div>
               <div>
-                <label className="text-gray-700 text-sm mb-2 block">Phone Number *</label>
-                <Input 
-                  type="tel" 
-                  placeholder="+91 XXXXX XXXXX" 
+                <label className="text-gray-700 text-sm mb-2 block flex items-center gap-2">
+                  Phone Number *
+                  <Badge variant="outline" className="text-xs">Voice</Badge>
+                </label>
+                <VoiceInput
+                  type="tel"
+                  placeholder="+91 XXXXX XXXXX"
                   className="h-12"
                   value={newCustomerPhone}
-                  onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  onChange={setNewCustomerPhone}
+                  voiceType="number"
+                  voiceLabel="Phone number"
                 />
               </div>
               <div>
-                <label className="text-gray-700 text-sm mb-2 block">Email (Optional)</label>
-                <Input 
-                  type="email" 
-                  placeholder="customer@email.com" 
+                <label className="text-gray-700 text-sm mb-2 block flex items-center gap-2">
+                  Email (Optional)
+                  <Badge variant="outline" className="text-xs">Voice</Badge>
+                </label>
+                <VoiceInput
+                  type="email"
+                  placeholder="customer@email.com"
                   className="h-12"
                   value={newCustomerEmail}
-                  onChange={(e) => setNewCustomerEmail(e.target.value)}
+                  onChange={setNewCustomerEmail}
+                  voiceType="text"
+                  voiceLabel="Email address"
                 />
               </div>
               <div>
-                <label className="text-gray-700 text-sm mb-2 block">Address (Optional)</label>
-                <Input 
-                  type="text" 
-                  placeholder="Enter address" 
+                <label className="text-gray-700 text-sm mb-2 block flex items-center gap-2">
+                  Address (Optional)
+                  <Badge variant="outline" className="text-xs">Voice</Badge>
+                </label>
+                <VoiceInput
+                  type="text"
+                  placeholder="Type or speak address..."
                   className="h-12"
                   value={newCustomerAddress}
-                  onChange={(e) => setNewCustomerAddress(e.target.value)}
+                  onChange={setNewCustomerAddress}
+                  voiceType="text"
+                  voiceLabel="Customer address"
                 />
               </div>
+            </div>
+
+            {/* Voice Tips */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800 mb-2 flex items-center gap-1">
+                <Mic className="w-3 h-3" />
+                <strong>Voice Tips:</strong>
+              </p>
+              <ul className="text-xs text-blue-700 space-y-1 ml-4">
+                <li>• Click mic icon next to each field</li>
+                <li>• Speak clearly in Hindi or English</li>
+                <li>• Auto-fill after voice recognition</li>
+              </ul>
             </div>
 
             <div className="flex space-x-3 mt-6">

@@ -2,8 +2,7 @@
   "name": "Retail Bandhu Lite - Voice & AI Billing App",
   "short_name": "Retail Bandhu",
   "description": "Voice + AI Billing App for small retailers and kiranas in India with WhatsApp integration",
-  "start_url": "/app",
-  "scope": "/app",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#1E88E5",
@@ -39,7 +38,7 @@
       "name": "New Bill",
       "short_name": "Bill",
       "description": "Create a new bill",
-      "url": "/app/billing",
+      "url": "/billing",
       "icons": [
         {
           "src": "/icon-bill.png",
@@ -51,7 +50,7 @@
       "name": "Quick POS",
       "short_name": "POS",
       "description": "Quick point of sale",
-      "url": "/app/quick-pos",
+      "url": "/quick-pos",
       "icons": [
         {
           "src": "/icon-pos.png",
@@ -63,7 +62,7 @@
       "name": "Inventory",
       "short_name": "Stock",
       "description": "Manage inventory",
-      "url": "/app/inventory",
+      "url": "/inventory",
       "icons": [
         {
           "src": "/icon-inventory.png",

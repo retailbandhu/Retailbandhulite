@@ -1,5 +1,4 @@
-import React from 'react';
-import image_4d93b3d1b087e58174e0c66cc9a52e892bfab633 from '@assets/retail_bandhu_logo.png';
+import image_4d93b3d1b087e58174e0c66cc9a52e892bfab633 from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
 import { 
   Mic, 
   Package, 
@@ -17,13 +16,12 @@ import {
   Building2, 
   AlertTriangle, 
   MessageCircle, 
-  Plus,
-  LogOut
+  Plus 
 } from 'lucide-react';
-import { Screen, StoreInfo, Product } from '../App';
+import type { Screen, StoreInfo, Product } from '../types';
 import { storage } from '../utils/storage';
 import { useState, useEffect } from 'react';
-import { SyncStatus } from './SyncStatus';
+import { DashboardSkeleton } from './LoadingStates';
 
 interface DashboardProps {
   onNavigate: (screen: Screen) => void;
@@ -31,54 +29,134 @@ interface DashboardProps {
   onToggleAI?: () => void;
   onToggleQuickActions?: () => void;
   products?: Product[];
-  onLogout?: () => void;
 }
 
-export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActions, products: productsProp, onLogout }: DashboardProps) {
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [todaySales, setTodaySales] = useState(0);
-  const [todayBills, setTodayBills] = useState(0);
-  const [khataPending, setKhataPending] = useState(0);
-  const [monthlyExpenses, setMonthlyExpenses] = useState(0);
+interface DashboardData {
+  lowStockCount: number;
+  todaySales: number;
+  todayBills: number;
+  khataPending: number;
+  monthlyExpenses: number;
+  products: Product[];
+}
+
+export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActions, products: productsProp }: DashboardProps) {
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Calculate low stock count
-    const products = productsProp || storage.getProducts();
-    const lowStock = products.filter(p => p.stock <= 10).length;
-    setLowStockCount(lowStock);
+    async function loadDashboardData() {
+      try {
+        setLoading(true);
 
-    // Calculate today's sales and bills
-    const bills = storage.getBills();
-    const today = new Date().toISOString().split('T')[0];
-    const todaysBills = bills.filter(b => {
-      const billDate = new Date(b.date).toISOString().split('T')[0];
-      return billDate === today;
-    });
-    
-    const sales = todaysBills.reduce((sum, b) => sum + (b.total || 0), 0);
-    setTodaySales(sales);
-    setTodayBills(todaysBills.length);
+        // Load products async (with fallback to prop or sync)
+        const products = productsProp || await storage.getProductsAsync().catch(() => storage.getProducts());
+        const lowStock = products.filter(p => p.stock <= 10).length;
 
-    // Calculate khata pending amount
-    const khataEntries = storage.getKhataEntries();
-    const pending = khataEntries
-      .filter(e => e.type === 'credit')
-      .reduce((sum, e) => sum + e.amount, 0);
-    setKhataPending(pending);
+        // Load other data (still using sync for now - gradual migration)
+        const bills = storage.getBills();
+        const today = new Date().toISOString().split('T')[0];
+        const todaysBills = bills.filter(b => {
+          const billDate = new Date(b.date).toISOString().split('T')[0];
+          return billDate === today;
+        });
+        
+        const sales = todaysBills.reduce((sum, b) => sum + (b.total || 0), 0);
 
-    // Calculate monthly expenses
-    const expenses = storage.getExpenses();
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const monthExpenses = expenses
-      .filter(e => {
-        const expenseDate = new Date(e.date);
-        return expenseDate.getMonth() === currentMonth && 
-               expenseDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, e) => sum + e.amount, 0);
-    setMonthlyExpenses(monthExpenses);
+        // Calculate khata pending amount
+        const khataEntries = storage.getKhataEntries();
+        const pending = khataEntries
+          .filter(e => e.type === 'credit')
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        // Calculate monthly expenses
+        const expenses = storage.getExpenses();
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        const monthExpenses = expenses
+          .filter(e => {
+            const expenseDate = new Date(e.date);
+            return expenseDate.getMonth() === currentMonth && 
+                   expenseDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        setDashboardData({
+          lowStockCount: lowStock,
+          todaySales: sales,
+          todayBills: todaysBills.length,
+          khataPending: pending,
+          monthlyExpenses: monthExpenses,
+          products,
+        });
+      } catch (error) {
+        console.error('Dashboard load error:', error);
+        // Fallback to sync methods if async fails
+        const products = productsProp || storage.getProducts();
+        const lowStock = products.filter(p => p.stock <= 10).length;
+        setDashboardData({
+          lowStockCount: lowStock,
+          todaySales: 0,
+          todayBills: 0,
+          khataPending: 0,
+          monthlyExpenses: 0,
+          products,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboardData();
   }, [productsProp]);
+
+  // Show loading skeleton
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 pb-20">
+        <div className="sticky top-0 bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] text-white p-4 shadow-lg z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold">{storeInfo.name}</h1>
+              <p className="text-sm text-white/90">{storeInfo.owner}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onToggleAI}
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+              >
+                <MessageCircle className="w-6 h-6" />
+              </button>
+              <button
+                onClick={onToggleQuickActions}
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+              >
+                <Zap className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => onNavigate('notifications')}
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors relative"
+              >
+                <Bell className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="p-4">
+          <DashboardSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  const { lowStockCount, todaySales, todayBills, khataPending, monthlyExpenses, products } = dashboardData || {
+    lowStockCount: 0,
+    todaySales: 0,
+    todayBills: 0,
+    khataPending: 0,
+    monthlyExpenses: 0,
+    products: [],
+  };
 
   const menuCards = [
     {
@@ -130,10 +208,7 @@ export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActi
             </div>
             <div>
               <h1 className="text-white text-lg">{storeInfo.name}</h1>
-              <div className="flex items-center gap-2">
-                <p className="text-white/80 text-sm">{storeInfo.owner}</p>
-                <div className="bg-white/20 px-2 py-0.5 rounded text-white"><SyncStatus /></div>
-              </div>
+              <p className="text-white/80 text-sm">{storeInfo.owner}</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -158,15 +233,6 @@ export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActi
             >
               <Settings className="w-5 h-5 text-white" />
             </button>
-            {onLogout && (
-              <button 
-                className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center"
-                onClick={onLogout}
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5 text-white" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -392,6 +458,7 @@ export function Dashboard({ onNavigate, storeInfo, onToggleAI, onToggleQuickActi
         </button>
       )}
 
+      {/* Quick Actions Button - Orange Plus Button */}
       {onToggleQuickActions && (
         <button
           onClick={onToggleQuickActions}

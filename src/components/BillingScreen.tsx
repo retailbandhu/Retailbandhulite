@@ -1,9 +1,6 @@
-import { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, MessageCircle, Printer, Save, Mic } from 'lucide-react';
-import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { VoiceButton } from './VoiceButton';
-import { Screen, Product, BillItem } from '../App';
+import { Screen, Product, BillItem } from '../types';
 
 interface BillingScreenProps {
   onNavigate: (screen: Screen) => void;

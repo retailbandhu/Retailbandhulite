@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Activity, HardDrive, Clock, CheckCircle, AlertCircle, Database, Wifi, WifiOff, Zap } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Activity, 
+  Wifi, 
+  WifiOff, 
+  HardDrive, 
+  Database, 
+  Clock, 
+  Zap,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
+import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { Button } from './ui/button';
 import { storage } from '../utils/storage';
-import type { Screen } from '../App';
+import type { Screen } from '../types';
 
 interface SystemHealthMonitorProps {
   onNavigate: (screen: Screen) => void;

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Store, User, MapPin, Phone, Upload } from 'lucide-react';
+import { Upload, Store, User, MapPin, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { StoreInfo } from '../App';
+import { StoreInfo } from '../types';
 
 interface StoreSetupProps {
   onComplete: (info: StoreInfo) => void;

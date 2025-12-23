@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Search, AlertTriangle, Edit2, Mic, Download, Upload, SlidersHorizontal, Trash2, Save, X } from 'lucide-react';
+import { ArrowLeft, Plus, Search, AlertTriangle, Edit2, Mic, Download, Upload, SlidersHorizontal, Trash2, Save, X, Package } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { toast } from 'sonner';
-import { storage } from '../utils/storage';
-import { Screen, Product } from '../App';
+import { toast } from 'sonner@2.0.3';
+import type { Screen, Product } from '../types';
 import { VoiceButton } from './VoiceButton';
+import { VoiceInput } from './VoiceInput';
+import { speak } from '../utils/speech';
+import { useProducts } from '../hooks/useProducts';
+import { LoadingSpinner, ProductListSkeleton, ErrorMessage, EmptyState } from './LoadingStates';
 
 interface InventoryScreenProps {
   onNavigate: (screen: Screen) => void;
@@ -15,29 +18,59 @@ interface InventoryScreenProps {
   setProducts: (products: Product[]) => void;
 }
 
-export function InventoryScreen({ onNavigate, products, setProducts }: InventoryScreenProps) {
+export function InventoryScreen({ onNavigate, products: productsProp, setProducts: setProductsProp }: InventoryScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showVoiceAdd, setShowVoiceAdd] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', category: '' });
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
   const [filterBy, setFilterBy] = useState<'all' | 'low' | 'high'>('all');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Use the new async hook
+  const { 
+    products: asyncProducts, 
+    loading, 
+    error, 
+    addProduct, 
+    updateProduct, 
+    deleteProduct,
+    refresh 
+  } = useProducts();
+
+  // Use async products if available, otherwise fall back to prop
+  const products = asyncProducts.length > 0 ? asyncProducts : productsProp;
+
+  // Sync with parent component when products change
+  useEffect(() => {
+    if (asyncProducts.length > 0) {
+      setProductsProp(asyncProducts);
+    }
+  }, [asyncProducts, setProductsProp]);
+
   const lowStockProducts = products.filter(p => p.stock < 20);
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (newProduct.name && newProduct.price && newProduct.stock) {
       const product: Product = {
         id: Date.now().toString(),
         name: newProduct.name,
         price: parseFloat(newProduct.price),
-        stock: parseInt(newProduct.stock)
+        stock: parseInt(newProduct.stock),
+        category: newProduct.category || 'General'
       };
-      setProducts([...products, product]);
-      setNewProduct({ name: '', price: '', stock: '' });
-      setShowAddModal(false);
+      
+      try {
+        await addProduct(product);
+        setNewProduct({ name: '', price: '', stock: '', category: '' });
+        setShowAddModal(false);
+        speak(`${product.name} successfully added to inventory`);
+      } catch (error) {
+        // Error already handled by hook with toast
+      }
+    } else {
+      toast.error('Please fill all fields');
     }
   };
 
@@ -49,9 +82,10 @@ export function InventoryScreen({ onNavigate, products, setProducts }: Inventory
         id: Date.now().toString(),
         name: 'Cadbury Dairy Milk',
         price: 45,
-        stock: 30
+        stock: 30,
+        category: 'Snacks'
       };
-      setProducts([...products, product]);
+      addProduct(product);
       setShowVoiceAdd(false);
     }, 2000);
   };
@@ -60,21 +94,31 @@ export function InventoryScreen({ onNavigate, products, setProducts }: Inventory
     setEditingProduct(product);
   };
 
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? editingProduct : p));
-      storage.setProducts(products.map(p => p.id === editingProduct.id ? editingProduct : p));
-      setEditingProduct(null);
-      toast.success('Product updated!');
+      try {
+        await updateProduct(editingProduct.id, {
+          name: editingProduct.name,
+          price: editingProduct.price,
+          stock: editingProduct.stock,
+          category: editingProduct.category
+        });
+        setEditingProduct(null);
+        speak('Product updated successfully');
+      } catch (error) {
+        // Error already handled by hook
+      }
     }
   };
 
-  const handleDeleteProduct = (id: string) => {
-    if (confirm('Product delete karna hai?')) {
-      const updatedProducts = products.filter(p => p.id !== id);
-      setProducts(updatedProducts);
-      storage.setProducts(updatedProducts);
-      toast.success('Product deleted!');
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (confirm(`${name} delete karna hai?`)) {
+      try {
+        await deleteProduct(id);
+        speak('Product deleted');
+      } catch (error) {
+        // Error already handled by hook
+      }
     }
   };
 
@@ -112,6 +156,77 @@ export function InventoryScreen({ onNavigate, products, setProducts }: Inventory
     if (sortBy === 'stock') return b.stock - a.stock;
     return 0;
   });
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 pb-8 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Inventory Management</h1>
+            <div className="w-10 h-10" />
+          </div>
+        </div>
+        <div className="px-6 pt-6">
+          <ProductListSkeleton count={6} />
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 pb-8 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Inventory Management</h1>
+            <div className="w-10 h-10" />
+          </div>
+        </div>
+        <div className="px-6 pt-6">
+          <ErrorMessage message={error} retry={refresh} />
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state
+  if (products.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 pb-8 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Inventory Management</h1>
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center"
+            >
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+          </div>
+        </div>
+        <div className="px-6 pt-6">
+          <EmptyState
+            icon={Package}
+            title="No Products Yet"
+            description="Add your first product to start managing inventory"
+            action={() => setShowAddModal(true)}
+            actionLabel="Add Product"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-24">
@@ -281,7 +396,7 @@ export function InventoryScreen({ onNavigate, products, setProducts }: Inventory
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => handleDeleteProduct(product.id)}
+                      onClick={() => handleDeleteProduct(product.id, product.name)}
                       className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -348,6 +463,17 @@ export function InventoryScreen({ onNavigate, products, setProducts }: Inventory
                   className="h-10"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Category</label>
+              <Input
+                type="text"
+                placeholder="e.g., Snacks"
+                value={newProduct.category}
+                onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                className="h-10"
+              />
             </div>
 
             <Button
@@ -417,6 +543,16 @@ export function InventoryScreen({ onNavigate, products, setProducts }: Inventory
                   className="h-10"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Category</label>
+              <Input
+                type="text"
+                value={editingProduct.category}
+                onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                className="h-10"
+              />
             </div>
 
             <Button

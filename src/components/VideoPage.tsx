@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { VideoDemo } from './VideoDemo';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import {
   ArrowLeft,
   Home,

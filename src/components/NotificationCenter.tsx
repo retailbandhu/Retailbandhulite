@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Bell, Package, TrendingUp, AlertCircle, MessageCircle, Check, Trash2, Settings as SettingsIcon, X, Filter } from 'lucide-react';
-import { Screen } from '../App';
+import { Screen } from '../types';
 import { Button } from './ui/button';
-import { Switch } from './ui/switch';
-import { toast } from 'sonner';
 
 interface Notification {
   id: string;

@@ -3,7 +3,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import {
   Download,
   Upload,
@@ -386,7 +386,30 @@ export function AdminDataManagement() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast.info('Downloading backup...')}
+                    onClick={() => {
+                      // Generate backup JSON file
+                      const backupData = {
+                        backup_id: backup.id,
+                        type: backup.type,
+                        size: backup.size,
+                        date: backup.date,
+                        timestamp: new Date().toISOString(),
+                        data: {
+                          message: 'This is a simulated backup file. In production, this would contain actual database data.'
+                        }
+                      };
+                      
+                      // Create and download file
+                      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `backup-${backup.id}-${backup.date}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      
+                      toast.success('Backup downloaded successfully!');
+                    }}
                   >
                     <Download className="w-4 h-4" />
                   </Button>

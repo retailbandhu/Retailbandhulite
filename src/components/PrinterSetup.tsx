@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Printer, Bluetooth, Wifi, Usb, Check, Search, Settings as SettingsIcon, Zap, FileText, AlertCircle, X, ChevronRight, RefreshCw } from 'lucide-react';
-import { Screen } from '../App';
+import { Screen } from '../types';
 import { Button } from './ui/button';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 
 interface Printer {
   id: string;

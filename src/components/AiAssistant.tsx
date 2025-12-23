@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Mic, Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Screen } from '../App';
-import bandhuMascot from '@assets/retail_bandhu_logo.png';
+import type { Screen } from '../types';
+import bandhuMascot from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
 
 interface AiAssistantProps {
-  onClose: () => void;
+  isOpen: boolean;
+  onToggle: () => void;
   onNavigate: (screen: Screen) => void;
 }
 
@@ -17,13 +18,13 @@ interface Message {
   timestamp: Date;
 }
 
-export function AiAssistant({ onClose, onNavigate }: AiAssistantProps) {
+export function AiAssistant({ isOpen, onToggle, onNavigate }: AiAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
 
   useEffect(() => {
-    if (messages.length === 0) {
+    if (isOpen && messages.length === 0) {
       // Initial greeting
       setMessages([
         {
@@ -34,7 +35,7 @@ export function AiAssistant({ onClose, onNavigate }: AiAssistantProps) {
         }
       ]);
     }
-  }, [messages.length]);
+  }, [isOpen, messages.length]);
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
@@ -109,12 +110,16 @@ export function AiAssistant({ onClose, onNavigate }: AiAssistantProps) {
     { label: '🛍️ Catalog', action: () => onNavigate('catalog') }
   ];
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
-        onClick={onClose}
+        onClick={onToggle}
       />
 
       {/* Chat Panel */}
@@ -133,7 +138,7 @@ export function AiAssistant({ onClose, onNavigate }: AiAssistantProps) {
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-white">
+          <button onClick={onToggle} className="text-white">
             <X className="w-6 h-6" />
           </button>
         </div>

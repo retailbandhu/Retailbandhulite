@@ -1,10 +1,10 @@
 import { ArrowLeft, Download, Upload, FileText, Package, Users, Receipt, AlertCircle, Database, FileJson, CheckCircle, FileSpreadsheet } from 'lucide-react';
-import { Screen } from '../App';
+import { Screen } from '../types';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { logger } from '../utils/logger';
 
 interface DataBackupProps {

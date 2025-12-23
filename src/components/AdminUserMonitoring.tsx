@@ -3,7 +3,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import {
   Users,
   Activity,
@@ -29,7 +29,6 @@ import {
   AlertCircle,
   Star,
   Gift,
-  RefreshCw,
 } from 'lucide-react';
 
 interface User {
@@ -56,53 +55,118 @@ interface User {
 }
 
 export function AdminUserMonitoring() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [realUsers, setRealUsers] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/admin/users', { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        setRealUsers(data);
-        const mappedUsers: User[] = data.map((user: any) => ({
-          id: user.id,
-          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email || 'Unknown',
-          email: user.email || '',
-          phone: user.stores?.[0]?.phone || '',
-          storeName: user.stores?.[0]?.name || 'No Store',
-          plan: 'free' as const,
-          status: 'active' as const,
-          joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
-          lastActive: user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : 'N/A',
-          totalRevenue: 0,
-          billsCreated: 0,
-          productsAdded: 0,
-          whatsappSent: 0,
-          avgOrderValue: 0,
-          state: '',
-          city: '',
-          loginCount: 0,
-          sessionTime: '0 min',
-          features: ['voice-billing', 'inventory'],
-          rating: 0,
-        }));
-        setUsers(mappedUsers);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  const [users, setUsers] = useState<User[]>([
+    {
+      id: '1',
+      name: 'Ramesh Sharma',
+      email: 'ramesh@example.com',
+      phone: '+91 98765 43210',
+      storeName: 'Sharma Kirana Store',
+      plan: 'pro',
+      status: 'active',
+      joinedDate: '2024-10-15',
+      lastActive: '2 hours ago',
+      totalRevenue: 999,
+      billsCreated: 1250,
+      productsAdded: 450,
+      whatsappSent: 320,
+      avgOrderValue: 125.50,
+      state: 'Maharashtra',
+      city: 'Mumbai',
+      loginCount: 156,
+      sessionTime: '14.5 min',
+      features: ['voice-billing', 'whatsapp', 'inventory', 'reports'],
+      rating: 4.8,
+    },
+    {
+      id: '2',
+      name: 'Priya Patel',
+      email: 'priya@example.com',
+      phone: '+91 98765 43211',
+      storeName: 'Patel General Store',
+      plan: 'automation',
+      status: 'active',
+      joinedDate: '2024-11-01',
+      lastActive: '5 minutes ago',
+      totalRevenue: 1998,
+      billsCreated: 2100,
+      productsAdded: 680,
+      whatsappSent: 850,
+      avgOrderValue: 185.75,
+      state: 'Gujarat',
+      city: 'Ahmedabad',
+      loginCount: 203,
+      sessionTime: '18.2 min',
+      features: ['voice-billing', 'whatsapp', 'inventory', 'reports', 'automation', 'khata'],
+      rating: 5.0,
+    },
+    {
+      id: '3',
+      name: 'Suresh Kumar',
+      email: 'suresh@example.com',
+      phone: '+91 98765 43212',
+      storeName: 'Kumar Provision Store',
+      plan: 'free',
+      status: 'trial',
+      joinedDate: '2024-12-08',
+      lastActive: '1 day ago',
+      totalRevenue: 0,
+      billsCreated: 45,
+      productsAdded: 120,
+      whatsappSent: 0,
+      avgOrderValue: 95.25,
+      state: 'Karnataka',
+      city: 'Bangalore',
+      loginCount: 12,
+      sessionTime: '8.3 min',
+      features: ['voice-billing', 'inventory'],
+      rating: 4.2,
+    },
+    {
+      id: '4',
+      name: 'Anjali Verma',
+      email: 'anjali@example.com',
+      phone: '+91 98765 43213',
+      storeName: 'Verma Super Market',
+      plan: 'pro',
+      status: 'active',
+      joinedDate: '2024-09-20',
+      lastActive: '30 minutes ago',
+      totalRevenue: 1499,
+      billsCreated: 1890,
+      productsAdded: 520,
+      whatsappSent: 450,
+      avgOrderValue: 142.30,
+      state: 'Delhi',
+      city: 'New Delhi',
+      loginCount: 185,
+      sessionTime: '16.8 min',
+      features: ['voice-billing', 'whatsapp', 'inventory', 'reports', 'catalog'],
+      rating: 4.6,
+    },
+    {
+      id: '5',
+      name: 'Vikram Singh',
+      email: 'vikram@example.com',
+      phone: '+91 98765 43214',
+      storeName: 'Singh Provision Store',
+      plan: 'free',
+      status: 'churned',
+      joinedDate: '2024-08-10',
+      lastActive: '15 days ago',
+      totalRevenue: 0,
+      billsCreated: 250,
+      productsAdded: 180,
+      whatsappSent: 0,
+      avgOrderValue: 88.50,
+      state: 'Uttar Pradesh',
+      city: 'Lucknow',
+      loginCount: 48,
+      sessionTime: '6.2 min',
+      features: ['voice-billing'],
+      rating: 3.5,
+    },
+  ]);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');

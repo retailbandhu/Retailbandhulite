@@ -1,54 +1,76 @@
-import { useState } from 'react';
-import { ArrowLeft, TrendingUp, Calendar, Download, TrendingDown, PieChart as PieChartIcon, BarChart3, X } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useState } from 'react'; // Added React import
 import { Button } from './ui/button';
-import { Screen } from '../App';
+import type { Screen } from '../types';
 import { Input } from './ui/input';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
+import { useReports } from '../hooks/useReports';
+import { LoadingSpinner, ErrorMessage } from './LoadingStates';
+import { VoiceButton } from './VoiceButton'; // Added voice support
+import { speak } from '../utils/speech'; // Added TTS support
+import { ArrowLeft, Download, Calendar, TrendingUp, DollarSign, ShoppingCart, Package, Mic } from 'lucide-react'; // Added icons
 
 interface ReportsScreenProps {
   onNavigate: (screen: Screen) => void;
 }
 
 export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState('Week');
   const [showCustomDateRange, setShowCustomDateRange] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showComparison, setShowComparison] = useState(false);
+  const [isListening, setIsListening] = useState(false); // Added voice state
 
-  const dailySalesData = [
-    { day: 'Mon', sales: 1200, lastWeek: 1100 },
-    { day: 'Tue', sales: 1800, lastWeek: 1600 },
-    { day: 'Wed', sales: 1500, lastWeek: 1400 },
-    { day: 'Thu', sales: 2200, lastWeek: 1900 },
-    { day: 'Fri', sales: 2800, lastWeek: 2500 },
-    { day: 'Sat', sales: 3200, lastWeek: 3000 },
-    { day: 'Sun', sales: 2400, lastWeek: 2200 }
-  ];
+  // Use the new reports hook
+  const { data: reportsData, loading, error, refresh, dateRange, setDateRange } = useReports();
 
-  const topProducts = [
-    { name: 'Maggie', qty: 45, revenue: 900, profit: 180 },
-    { name: 'Pepsi', qty: 38, revenue: 760, profit: 152 },
-    { name: 'Parle-G', qty: 35, revenue: 350, profit: 70 },
-    { name: 'Tata Tea', qty: 28, revenue: 1120, profit: 224 },
-    { name: 'Lays', qty: 22, revenue: 440, profit: 88 }
-  ];
+  // Map dateRange to display period
+  const selectedPeriod = dateRange === 'today' ? 'Today' : 
+                        dateRange === 'week' ? 'Week' : 
+                        dateRange === 'month' ? 'Month' : 'All Time';
 
-  const categoryData = [
-    { name: 'Snacks', value: 4500, color: '#FF6F00' },
-    { name: 'Beverages', value: 3800, color: '#1E88E5' },
-    { name: 'Groceries', value: 3200, color: '#4CAF50' },
-    { name: 'Personal Care', value: 2100, color: '#9C27B0' },
-    { name: 'Others', value: 1600, color: '#FFC107' }
-  ];
-
-  const paymentMethodsData = [
-    { name: 'UPI', value: 6200, color: '#1E88E5' },
-    { name: 'Cash', value: 5400, color: '#4CAF50' },
-    { name: 'Card', value: 2800, color: '#9C27B0' },
-    { name: 'Credit', value: 800, color: '#FF6F00' }
-  ];
+  // Voice command handler
+  const handleVoiceCommand = async (transcript: string) => {
+    const lower = transcript.toLowerCase();
+    
+    try {
+      // Period selection commands
+      if (lower.includes('today') || lower.includes('aaj')) {
+        setDateRange('today');
+        await speak('Aaj ki report dikha raha hoon. Ho gaya!');
+        toast.success('Showing today\'s report');
+      } else if (lower.includes('week') || lower.includes('hafte') || lower.includes('saptah')) {
+        setDateRange('week');
+        await speak('Is hafte ki report dikha raha hoon. Ho gaya!');
+        toast.success('Showing this week\'s report');
+      } else if (lower.includes('month') || lower.includes('mahine') || lower.includes('maas')) {
+        setDateRange('month');
+        await speak('Is mahine ki report dikha raha hoon. Ho gaya!');
+        toast.success('Showing this month\'s report');
+      } else if (lower.includes('export') || lower.includes('download') || lower.includes('save')) {
+        if (lower.includes('csv')) {
+          handleExportReport('csv');
+          await speak('CSV report download ho gaya. Ho gaya!');
+        } else if (lower.includes('pdf')) {
+          handleExportReport('pdf');
+          await speak('PDF report jaldi aayega. Ho gaya!');
+        } else {
+          handleExportReport('csv');
+          await speak('Report download ho gaya. Ho gaya!');
+        }
+      } else if (lower.includes('refresh') || lower.includes('reload') || lower.includes('update')) {
+        refresh();
+        await speak('Report refresh kar diya. Ho gaya!');
+        toast.success('Report refreshed');
+      } else {
+        await speak('Samajh nahi aaya. Kripya phir se boliye.');
+        toast.error('Command not recognized. Try: "today", "week", "month", or "export"');
+      }
+    } catch (error) {
+      console.error('Voice command error:', error);
+      toast.error('Error processing voice command');
+    }
+  };
 
   const handleExportReport = (format: 'pdf' | 'csv') => {
     if (format === 'csv') {
@@ -70,13 +92,103 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
   };
 
   const handlePeriodChange = (period: string) => {
-    setSelectedPeriod(period);
     if (period === 'Custom') {
       setShowCustomDateRange(true);
     } else {
       setShowCustomDateRange(false);
+      // Map period to dateRange
+      if (period === 'Today') setDateRange('today');
+      else if (period === 'Week') setDateRange('week');
+      else if (period === 'Month') setDateRange('month');
+      else setDateRange('all');
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-20">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 pb-8 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Reports & Analytics</h1>
+            <div className="w-6 h-6" />
+          </div>
+        </div>
+        <div className="px-6 pt-6">
+          <LoadingSpinner message="Loading reports..." />
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-20">
+        <div className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] p-6 pb-8 rounded-b-3xl">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => onNavigate('dashboard')} className="text-white">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-white text-xl">Reports & Analytics</h1>
+            <div className="w-6 h-6" />
+          </div>
+        </div>
+        <div className="px-6 pt-6">
+          <ErrorMessage message={error} retry={refresh} />
+        </div>
+      </div>
+    );
+  }
+
+  // Use real data from hook (with fallback to mock data for now)
+  const totalSales = reportsData?.totalSales || 15200;
+  const totalBills = reportsData?.totalBills || 87;
+  const averageBillValue = reportsData?.averageBillValue || 175;
+  const topProducts = reportsData?.topProducts?.slice(0, 5).map(p => ({
+    name: p.name,
+    qty: p.quantity,
+    revenue: p.revenue,
+    profit: p.revenue * 0.2 // Assume 20% profit margin
+  })) || [
+    { name: 'Maggie', qty: 45, revenue: 900, profit: 180 },
+    { name: 'Pepsi', qty: 38, revenue: 760, profit: 152 },
+    { name: 'Parle-G', qty: 35, revenue: 350, profit: 70 },
+    { name: 'Tata Tea', qty: 28, revenue: 1120, profit: 224 },
+    { name: 'Lays', qty: 22, revenue: 440, profit: 88 }
+  ];
+
+  const dailySalesData = reportsData?.salesByDate?.slice(-7).map(d => ({
+    day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+    sales: d.amount,
+    lastWeek: d.amount * 0.9 // Mock comparison
+  })) || [
+    { day: 'Mon', sales: 1200, lastWeek: 1100 },
+    { day: 'Tue', sales: 1800, lastWeek: 1600 },
+    { day: 'Wed', sales: 1500, lastWeek: 1400 },
+    { day: 'Thu', sales: 2200, lastWeek: 1900 },
+    { day: 'Fri', sales: 2800, lastWeek: 2500 },
+    { day: 'Sat', sales: 3200, lastWeek: 3000 },
+    { day: 'Sun', sales: 2400, lastWeek: 2200 }
+  ];
+
+  const categoryData = [
+    { name: 'Snacks', value: 4500, color: '#FF6F00' },
+    { name: 'Beverages', value: 3800, color: '#1E88E5' },
+    { name: 'Groceries', value: 3200, color: '#4CAF50' },
+    { name: 'Personal Care', value: 2100, color: '#9C27B0' },
+    { name: 'Others', value: 1600, color: '#FFC107' }
+  ];
+
+  const paymentMethodsData = [
+    { name: 'UPI', value: 6200, color: '#1E88E5' },
+    { name: 'Cash', value: 5400, color: '#4CAF50' },
+    { name: 'Card', value: 2800, color: '#9C27B0' },
+    { name: 'Credit', value: 800, color: '#FF6F00' }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1E88E5]/5 to-[#FF6F00]/5 pb-20">
@@ -87,14 +199,30 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-white text-xl">Reports & Analytics</h1>
-          <button className="text-white">
-            <Download className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <VoiceButton 
+              onVoiceInput={handleVoiceCommand}
+              onListeningChange={setIsListening}
+              size="sm"
+              showBetaBadge={false}
+            />
+          </div>
         </div>
+
+        {/* Voice Status Banner */}
+        {isListening && (
+          <div className="mb-4 bg-white/20 backdrop-blur-sm rounded-lg p-3 flex items-center gap-3 animate-pulse">
+            <Mic className="w-5 h-5 text-white animate-pulse" />
+            <div className="flex-1">
+              <p className="text-white text-sm">🎤 Listening...</p>
+              <p className="text-white/80 text-xs">Say: "today", "week", "month", or "export"</p>
+            </div>
+          </div>
+        )}
 
         {/* Period Selector */}
         <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-          {['Today', 'Week', 'Month', 'Custom'].map((period) => (
+          {['Today', 'Week', 'Month', 'All Time', 'Custom'].map((period) => (
             <button
               key={period}
               className={`px-4 py-2 rounded-lg whitespace-nowrap ${
@@ -145,7 +273,7 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
               </div>
               <p className="text-gray-600 text-sm">Total Sales</p>
             </div>
-            <p className="text-2xl text-gray-900">₹15,200</p>
+            <p className="text-2xl text-gray-900">₹{totalSales.toLocaleString()}</p>
             <p className="text-green-600 text-xs mt-1">↑ 12% from last week</p>
           </div>
 
@@ -156,13 +284,13 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
               </div>
               <p className="text-gray-600 text-sm">Total Bills</p>
             </div>
-            <p className="text-2xl text-gray-900">87</p>
+            <p className="text-2xl text-gray-900">{totalBills}</p>
             <p className="text-blue-600 text-xs mt-1">This week</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-4">
             <p className="text-gray-600 text-sm mb-2">Avg Bill Value</p>
-            <p className="text-2xl text-gray-900">₹175</p>
+            <p className="text-2xl text-gray-900">₹{averageBillValue.toLocaleString()}</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-4">
@@ -174,8 +302,8 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
         {/* Sales Chart */}
         <div className="bg-white rounded-xl shadow-lg p-5">
           <h3 className="text-gray-900 mb-4">Weekly Sales Trend</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', height: 256, minHeight: 256 }}>
+            <ResponsiveContainer width="100%" height={256} minHeight={256}>
               <LineChart data={dailySalesData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="day" stroke="#666" />
@@ -211,8 +339,8 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
         {/* Top Products */}
         <div className="bg-white rounded-xl shadow-lg p-5">
           <h3 className="text-gray-900 mb-4">Top Selling Products</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', height: 256, minHeight: 256 }}>
+            <ResponsiveContainer width="100%" height={256} minHeight={256}>
               <BarChart data={topProducts} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" stroke="#666" />
@@ -254,8 +382,8 @@ export function ReportsScreen({ onNavigate }: ReportsScreenProps) {
         {/* Payment Methods */}
         <div className="bg-white rounded-xl shadow-lg p-5">
           <h3 className="text-gray-900 mb-4">Payment Methods</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', height: 256, minHeight: 256 }}>
+            <ResponsiveContainer width="100%" height={256} minHeight={256}>
               <PieChart>
                 <Pie
                   data={paymentMethodsData}

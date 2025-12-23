@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import {
   Webhook,
   Code,
@@ -328,7 +328,7 @@ export function AdminAPIIntegrations() {
                       className="flex items-center justify-between text-sm"
                     >
                       <span className="text-gray-600">{key}:</span>
-                      <span className="font-medium text-gray-900">{String(value)}</span>
+                      <span className="font-medium text-gray-900">{value}</span>
                     </div>
                   ))}
                 </div>

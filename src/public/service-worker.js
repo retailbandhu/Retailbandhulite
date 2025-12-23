@@ -1,11 +1,8 @@
-const CACHE_NAME = 'retail-bandhu-v2';
+const CACHE_NAME = 'retail-bandhu-v1';
 const urlsToCache = [
-  '/app',
-  '/app/login',
-  '/app/billing',
-  '/app/inventory',
-  '/app/quick-pos',
+  '/',
   '/index.html',
+  '/App.tsx',
   '/styles/globals.css'
 ];
 
@@ -104,6 +101,6 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('/app')
+    clients.openWindow('/')
   );
 });

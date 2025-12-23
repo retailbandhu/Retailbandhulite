@@ -4,9 +4,9 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { Screen } from '../App';
+import type { Screen } from '../types';
 import {
   LayoutDashboard,
   FileText,

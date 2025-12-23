@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { AdminAnnouncementCenter } from './AdminAnnouncementCenter';
 import { AdminSupportTickets } from './AdminSupportTickets';
 import {

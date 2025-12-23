@@ -4,8 +4,8 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { toast } from 'sonner';
-import { Screen, Product, StoreInfo } from '../App';
+import { toast } from 'sonner@2.0.3';
+import { Screen, Product, StoreInfo } from '../types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import {
   ArrowLeft,

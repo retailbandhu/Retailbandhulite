@@ -1,5 +1,5 @@
 import { Mic, Camera, FileText, Users, Building2, Scan } from 'lucide-react';
-import { Screen } from '../App';
+import { Screen } from '../types';
 
 interface QuickActionsMenuProps {
   isOpen: boolean;

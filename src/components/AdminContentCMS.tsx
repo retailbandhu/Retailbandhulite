@@ -1,10 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from './ui/dialog';
 import {
   FileText,
   Globe,
@@ -38,10 +46,8 @@ import {
   HelpCircle,
   FileCode,
   Zap,
-  RefreshCw,
+  X,
 } from 'lucide-react';
-
-const API_BASE_URL = '/api/admin';
 
 interface BlogPost {
   id: string;
@@ -83,75 +89,76 @@ type CMSView = 'overview' | 'blog' | 'videos' | 'whatsapp' | 'notifications' | '
 export function AdminContentCMS() {
   const [activeView, setActiveView] = useState<CMSView>('overview');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  // New state for modals and forms
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
+  const [editingVideo, setEditingVideo] = useState<VideoTutorial | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [viewingBlog, setViewingBlog] = useState<BlogPost | null>(null);
+  const [viewingVideo, setViewingVideo] = useState<VideoTutorial | null>(null);
 
-  useEffect(() => {
-    fetchCMSData();
-  }, []);
+  // Form state for creating/editing
+  const [blogForm, setBlogForm] = useState({
+    title: '',
+    slug: '',
+    excerpt: '',
+    category: 'Tutorials',
+    status: 'draft' as 'published' | 'draft' | 'scheduled',
+  });
 
-  const fetchCMSData = async () => {
-    try {
-      const [postsRes, templatesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/blog-posts`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/templates`, { credentials: 'include' }),
-      ]);
+  const [videoForm, setVideoForm] = useState({
+    title: '',
+    description: '',
+    url: '',
+    thumbnail: '',
+    category: 'Getting Started',
+    duration: '',
+  });
 
-      if (postsRes.ok) {
-        const postsData = await postsRes.json();
-        if (postsData.length > 0) {
-          setBlogPosts(postsData.map((p: any) => ({
-            id: p.id.toString(),
-            title: p.title || '',
-            slug: p.slug || '',
-            excerpt: p.excerpt || '',
-            author: p.author || 'Admin',
-            status: p.status || 'draft',
-            publishDate: p.publishDate || new Date().toISOString().split('T')[0],
-            views: p.views || 0,
-            category: p.category || 'General',
-          })));
-        }
-      }
+  const [templateForm, setTemplateForm] = useState({
+    name: '',
+    content: '',
+    type: 'whatsapp' as 'whatsapp' | 'notification' | 'email',
+  });
 
-      if (templatesRes.ok) {
-        const templatesData = await templatesRes.json();
-        if (templatesData.length > 0) {
-          const whatsapp = templatesData.filter((t: any) => t.type === 'whatsapp');
-          const notification = templatesData.filter((t: any) => t.type === 'notification');
-          
-          if (whatsapp.length > 0) {
-            setWhatsappTemplates(whatsapp.map((t: any) => ({
-              id: t.id.toString(),
-              name: t.name || '',
-              type: t.type,
-              content: t.content || '',
-              variables: t.variables || [],
-              active: t.active !== false,
-              usageCount: t.usageCount || 0,
-            })));
-          }
-          
-          if (notification.length > 0) {
-            setNotificationTemplates(notification.map((t: any) => ({
-              id: t.id.toString(),
-              name: t.name || '',
-              type: t.type,
-              content: t.content || '',
-              variables: t.variables || [],
-              active: t.active !== false,
-              usageCount: t.usageCount || 0,
-            })));
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching CMS data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([
+    {
+      id: '1',
+      title: 'Getting Started with Voice Billing',
+      slug: 'getting-started-voice-billing',
+      excerpt: 'Learn how to use voice commands to create bills faster...',
+      author: 'Retail Bandhu Team',
+      status: 'published',
+      publishDate: '2024-12-01',
+      views: 1245,
+      category: 'Tutorials',
+    },
+    {
+      id: '2',
+      title: 'WhatsApp Automation: Complete Guide',
+      slug: 'whatsapp-automation-guide',
+      excerpt: 'Automate your customer communication with WhatsApp...',
+      author: 'Marketing Team',
+      status: 'published',
+      publishDate: '2024-12-05',
+      views: 892,
+      category: 'Marketing',
+    },
+    {
+      id: '3',
+      title: 'Inventory Management Best Practices',
+      slug: 'inventory-management-best-practices',
+      excerpt: 'Tips and tricks for managing inventory efficiently...',
+      author: 'Product Team',
+      status: 'draft',
+      publishDate: '2024-12-15',
+      views: 0,
+      category: 'Business',
+    },
+  ]);
 
   const [videoTutorials, setVideoTutorials] = useState<VideoTutorial[]>([
     {
@@ -216,9 +223,56 @@ export function AdminContentCMS() {
     },
   ]);
 
-  const [whatsappTemplates, setWhatsappTemplates] = useState<Template[]>([]);
+  const [whatsappTemplates, setWhatsappTemplates] = useState<Template[]>([
+    {
+      id: 'wt1',
+      name: 'Order Confirmation',
+      type: 'whatsapp',
+      content: 'Hi {{customer_name}}, your order #{{order_id}} has been confirmed. Total: ₹{{amount}}. Thank you!',
+      variables: ['customer_name', 'order_id', 'amount'],
+      active: true,
+      usageCount: 1245,
+    },
+    {
+      id: 'wt2',
+      name: 'Payment Reminder',
+      type: 'whatsapp',
+      content: 'Dear {{customer_name}}, you have a pending payment of ₹{{amount}}. Please clear dues by {{due_date}}.',
+      variables: ['customer_name', 'amount', 'due_date'],
+      active: true,
+      usageCount: 687,
+    },
+    {
+      id: 'wt3',
+      name: 'New Product Launch',
+      type: 'whatsapp',
+      content: '🎉 New arrival! {{product_name}} now available at {{store_name}}. Special price: ₹{{price}}. Visit today!',
+      variables: ['product_name', 'store_name', 'price'],
+      active: false,
+      usageCount: 234,
+    },
+  ]);
 
-  const [notificationTemplates, setNotificationTemplates] = useState<Template[]>([]);
+  const [notificationTemplates, setNotificationTemplates] = useState<Template[]>([
+    {
+      id: 'nt1',
+      name: 'Low Stock Alert',
+      type: 'notification',
+      content: '⚠️ Low stock alert: {{product_name}} has only {{quantity}} units left.',
+      variables: ['product_name', 'quantity'],
+      active: true,
+      usageCount: 432,
+    },
+    {
+      id: 'nt2',
+      name: 'Daily Sales Summary',
+      type: 'notification',
+      content: '📊 Today\'s sales: ₹{{total_sales}} | Bills: {{bill_count}} | Top product: {{top_product}}',
+      variables: ['total_sales', 'bill_count', 'top_product'],
+      active: true,
+      usageCount: 890,
+    },
+  ]);
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -400,7 +454,13 @@ export function AdminContentCMS() {
             <Filter className="w-4 h-4 mr-2" />
             Filter
           </Button>
-          <Button className="bg-blue-600">
+          <Button
+            className="bg-blue-600"
+            onClick={() => {
+              setEditingBlog(null);
+              setShowBlogModal(true);
+            }}
+          >
             <Plus className="w-4 h-4 mr-2" />
             New Post
           </Button>
@@ -444,13 +504,33 @@ export function AdminContentCMS() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setEditingBlog(post);
+                    setShowBlogModal(true);
+                  }}
+                >
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setViewingBlog(post)}
+                >
                   <Eye className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(`Delete "${post.title}"?`)) {
+                      setBlogPosts(prev => prev.filter(p => p.id !== post.id));
+                      toast.success('Blog post deleted');
+                    }
+                  }}
+                >
                   <Trash2 className="w-4 h-4 text-red-600" />
                 </Button>
               </div>
@@ -480,7 +560,13 @@ export function AdminContentCMS() {
               Filter
             </Button>
           </div>
-          <Button className="bg-purple-600 ml-3">
+          <Button
+            className="bg-purple-600 ml-3"
+            onClick={() => {
+              setEditingVideo(null);
+              setShowVideoModal(true);
+            }}
+          >
             <Upload className="w-4 h-4 mr-2" />
             Upload Video
           </Button>
@@ -537,15 +623,37 @@ export function AdminContentCMS() {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => {
+                    setEditingVideo(video);
+                    setShowVideoModal(true);
+                  }}
+                >
                   <Edit className="w-3 h-3 mr-1" />
                   Edit
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => window.open(video.url, '_blank')}
+                >
                   <ExternalLink className="w-3 h-3 mr-1" />
                   View
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(`Delete "${video.title}"?`)) {
+                      setVideoTutorials(prev => prev.filter(v => v.id !== video.id));
+                      toast.success('Video deleted');
+                    }
+                  }}
+                >
                   <Trash2 className="w-3 h-3 text-red-600" />
                 </Button>
               </div>
@@ -563,7 +671,13 @@ export function AdminContentCMS() {
           <h3 className="font-bold text-lg">
             {type === 'whatsapp' ? 'WhatsApp' : 'Notification'} Templates
           </h3>
-          <Button className={type === 'whatsapp' ? 'bg-green-600' : 'bg-orange-600'}>
+          <Button
+            className={type === 'whatsapp' ? 'bg-green-600' : 'bg-orange-600'}
+            onClick={() => {
+              setEditingTemplate(null);
+              setShowTemplateModal(true);
+            }}
+          >
             <Plus className="w-4 h-4 mr-2" />
             New Template
           </Button>
@@ -619,13 +733,50 @@ export function AdminContentCMS() {
                 >
                   {template.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setEditingTemplate(template);
+                    setShowTemplateModal(true);
+                  }}
+                >
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const newTemplate = { 
+                      ...template, 
+                      id: `${template.type}-${Date.now()}`, 
+                      name: `${template.name} (Copy)`,
+                      usageCount: 0
+                    };
+                    if (type === 'whatsapp') {
+                      setWhatsappTemplates(prev => [...prev, newTemplate]);
+                    } else {
+                      setNotificationTemplates(prev => [...prev, newTemplate]);
+                    }
+                    toast.success('Template copied successfully');
+                  }}
+                >
                   <Copy className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    if (confirm(`Delete "${template.name}"?`)) {
+                      if (type === 'whatsapp') {
+                        setWhatsappTemplates(prev => prev.filter(t => t.id !== template.id));
+                      } else {
+                        setNotificationTemplates(prev => prev.filter(t => t.id !== template.id));
+                      }
+                      toast.success('Template deleted');
+                    }
+                  }}
+                >
                   <Trash2 className="w-4 h-4 text-red-600" />
                 </Button>
               </div>
@@ -807,6 +958,153 @@ export function AdminContentCMS() {
     </div>
   );
 
+  // Handler functions for form submissions
+  const handleBlogSubmit = () => {
+    if (!blogForm.title || !blogForm.excerpt) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const newBlog: BlogPost = {
+      id: editingBlog?.id || `blog-${Date.now()}`,
+      title: blogForm.title,
+      slug: blogForm.slug || blogForm.title.toLowerCase().replace(/\s+/g, '-'),
+      excerpt: blogForm.excerpt,
+      category: blogForm.category,
+      status: blogForm.status,
+      author: 'Admin',
+      publishDate: new Date().toISOString().split('T')[0],
+      views: editingBlog?.views || 0,
+    };
+
+    if (editingBlog) {
+      setBlogPosts(prev => prev.map(p => p.id === editingBlog.id ? newBlog : p));
+      toast.success('Blog post updated!');
+    } else {
+      setBlogPosts(prev => [...prev, newBlog]);
+      toast.success('Blog post created!');
+    }
+
+    setShowBlogModal(false);
+    setEditingBlog(null);
+    setBlogForm({ title: '', slug: '', excerpt: '', category: 'Tutorials', status: 'draft' });
+  };
+
+  const handleVideoSubmit = () => {
+    if (!videoForm.title || !videoForm.url) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const newVideo: VideoTutorial = {
+      id: editingVideo?.id || `video-${Date.now()}`,
+      title: videoForm.title,
+      description: videoForm.description,
+      url: videoForm.url,
+      thumbnail: videoForm.thumbnail || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400',
+      category: videoForm.category,
+      duration: videoForm.duration || '0:00',
+      views: editingVideo?.views || 0,
+      status: 'published',
+      uploadDate: new Date().toISOString().split('T')[0],
+    };
+
+    if (editingVideo) {
+      setVideoTutorials(prev => prev.map(v => v.id === editingVideo.id ? newVideo : v));
+      toast.success('Video updated!');
+    } else {
+      setVideoTutorials(prev => [...prev, newVideo]);
+      toast.success('Video created!');
+    }
+
+    setShowVideoModal(false);
+    setEditingVideo(null);
+    setVideoForm({ title: '', description: '', url: '', thumbnail: '', category: 'Getting Started', duration: '' });
+  };
+
+  const handleTemplateSubmit = () => {
+    if (!templateForm.name || !templateForm.content) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Extract variables from content ({{variable_name}})
+    const variables = (templateForm.content.match(/\{\{([^}]+)\}\}/g) || [])
+      .map(v => v.replace(/\{\{|\}\}/g, ''));
+
+    const newTemplate: Template = {
+      id: editingTemplate?.id || `${templateForm.type}-${Date.now()}`,
+      name: templateForm.name,
+      type: templateForm.type,
+      content: templateForm.content,
+      variables,
+      active: editingTemplate?.active !== undefined ? editingTemplate.active : true,
+      usageCount: editingTemplate?.usageCount || 0,
+    };
+
+    if (editingTemplate) {
+      if (templateForm.type === 'whatsapp') {
+        setWhatsappTemplates(prev => prev.map(t => t.id === editingTemplate.id ? newTemplate : t));
+      } else {
+        setNotificationTemplates(prev => prev.map(t => t.id === editingTemplate.id ? newTemplate : t));
+      }
+      toast.success('Template updated!');
+    } else {
+      if (templateForm.type === 'whatsapp') {
+        setWhatsappTemplates(prev => [...prev, newTemplate]);
+      } else {
+        setNotificationTemplates(prev => [...prev, newTemplate]);
+      }
+      toast.success('Template created!');
+    }
+
+    setShowTemplateModal(false);
+    setEditingTemplate(null);
+    setTemplateForm({ name: '', content: '', type: 'whatsapp' });
+  };
+
+  // Open modal with editing data
+  React.useEffect(() => {
+    if (editingBlog && showBlogModal) {
+      setBlogForm({
+        title: editingBlog.title,
+        slug: editingBlog.slug,
+        excerpt: editingBlog.excerpt,
+        category: editingBlog.category,
+        status: editingBlog.status,
+      });
+    } else if (!showBlogModal) {
+      setBlogForm({ title: '', slug: '', excerpt: '', category: 'Tutorials', status: 'draft' });
+    }
+  }, [editingBlog, showBlogModal]);
+
+  React.useEffect(() => {
+    if (editingVideo && showVideoModal) {
+      setVideoForm({
+        title: editingVideo.title,
+        description: editingVideo.description,
+        url: editingVideo.url,
+        thumbnail: editingVideo.thumbnail,
+        category: editingVideo.category,
+        duration: editingVideo.duration,
+      });
+    } else if (!showVideoModal) {
+      setVideoForm({ title: '', description: '', url: '', thumbnail: '', category: 'Getting Started', duration: '' });
+    }
+  }, [editingVideo, showVideoModal]);
+
+  React.useEffect(() => {
+    if (editingTemplate && showTemplateModal) {
+      setTemplateForm({
+        name: editingTemplate.name,
+        content: editingTemplate.content,
+        type: editingTemplate.type,
+      });
+    } else if (!showTemplateModal) {
+      setTemplateForm({ name: '', content: '', type: 'whatsapp' });
+    }
+  }, [editingTemplate, showTemplateModal]);
+
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
@@ -850,6 +1148,236 @@ export function AdminContentCMS() {
       {activeView === 'landing' && renderLandingPage()}
       {activeView === 'help' && renderHelpDocs()}
       {activeView === 'media' && renderMediaLibrary()}
+
+      {/* Blog Post Modal */}
+      <Dialog open={showBlogModal} onOpenChange={setShowBlogModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingBlog ? 'Edit Blog Post' : 'Create New Blog Post'}</DialogTitle>
+            <DialogDescription>
+              {editingBlog ? 'Update the blog post details below.' : 'Fill in the details to create a new blog post.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Title *</label>
+              <Input
+                value={blogForm.title}
+                onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
+                placeholder="Enter blog post title..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Slug</label>
+              <Input
+                value={blogForm.slug}
+                onChange={(e) => setBlogForm({ ...blogForm, slug: e.target.value })}
+                placeholder="auto-generated-from-title"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Excerpt *</label>
+              <Textarea
+                value={blogForm.excerpt}
+                onChange={(e) => setBlogForm({ ...blogForm, excerpt: e.target.value })}
+                placeholder="Brief description of the blog post..."
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Category</label>
+                <select
+                  value={blogForm.category}
+                  onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="Tutorials">Tutorials</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Business">Business</option>
+                  <option value="Features">Features</option>
+                  <option value="News">News</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Status</label>
+                <select
+                  value={blogForm.status}
+                  onChange={(e) => setBlogForm({ ...blogForm, status: e.target.value as any })}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="scheduled">Scheduled</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBlogModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBlogSubmit} className="bg-blue-600">
+              <Save className="w-4 h-4 mr-2" />
+              {editingBlog ? 'Update' : 'Create'} Post
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Tutorial Modal */}
+      <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingVideo ? 'Edit Video Tutorial' : 'Upload New Video Tutorial'}</DialogTitle>
+            <DialogDescription>
+              {editingVideo ? 'Update the video tutorial details below.' : 'Add a new video tutorial with YouTube or Vimeo URL.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Title *</label>
+              <Input
+                value={videoForm.title}
+                onChange={(e) => setVideoForm({ ...videoForm, title: e.target.value })}
+                placeholder="Enter video title..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Description</label>
+              <Textarea
+                value={videoForm.description}
+                onChange={(e) => setVideoForm({ ...videoForm, description: e.target.value })}
+                placeholder="Brief description of the video..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Video URL * (YouTube, Vimeo, etc.)</label>
+              <Input
+                value={videoForm.url}
+                onChange={(e) => setVideoForm({ ...videoForm, url: e.target.value })}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Thumbnail URL</label>
+              <Input
+                value={videoForm.thumbnail}
+                onChange={(e) => setVideoForm({ ...videoForm, thumbnail: e.target.value })}
+                placeholder="https://... (optional)"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Category</label>
+                <select
+                  value={videoForm.category}
+                  onChange={(e) => setVideoForm({ ...videoForm, category: e.target.value })}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="Getting Started">Getting Started</option>
+                  <option value="Features">Features</option>
+                  <option value="Integrations">Integrations</option>
+                  <option value="Advanced">Advanced</option>
+                  <option value="Analytics">Analytics</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Duration (mm:ss)</label>
+                <Input
+                  value={videoForm.duration}
+                  onChange={(e) => setVideoForm({ ...videoForm, duration: e.target.value })}
+                  placeholder="5:30"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowVideoModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleVideoSubmit} className="bg-purple-600">
+              <Save className="w-4 h-4 mr-2" />
+              {editingVideo ? 'Update' : 'Upload'} Video
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Modal */}
+      <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTemplate ? 'Edit Template' : 'Create New Template'}</DialogTitle>
+            <DialogDescription>
+              {editingTemplate ? 'Update the template content and variables below.' : 'Create a new message template with dynamic variables using {{variable_name}} syntax.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Template Name *</label>
+              <Input
+                value={templateForm.name}
+                onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                placeholder="Enter template name..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Type</label>
+              <select
+                value={templateForm.type}
+                onChange={(e) => setTemplateForm({ ...templateForm, type: e.target.value as any })}
+                className="w-full p-2 border rounded-lg"
+              >
+                <option value="whatsapp">WhatsApp</option>
+                <option value="notification">Notification</option>
+                <option value="email">Email</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Template Content *</label>
+              <Textarea
+                value={templateForm.content}
+                onChange={(e) => setTemplateForm({ ...templateForm, content: e.target.value })}
+                placeholder="Use {{variable_name}} for dynamic content..."
+                rows={6}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Tip: Use {`{{variable_name}}`} syntax for dynamic variables
+              </p>
+            </div>
+            {templateForm.content && (
+              <div className="p-3 bg-gray-50 rounded-lg border">
+                <p className="text-xs font-medium text-gray-700 mb-2">Detected Variables:</p>
+                <div className="flex flex-wrap gap-2">
+                  {(templateForm.content.match(/\{\{([^}]+)\}\}/g) || []).map((v, i) => (
+                    <Badge key={i} variant="outline" className="font-mono text-xs">
+                      {v}
+                    </Badge>
+                  ))}
+                  {!(templateForm.content.match(/\{\{([^}]+)\}\}/g) || []).length && (
+                    <span className="text-xs text-gray-500">No variables found</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplateModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTemplateSubmit}
+              className={templateForm.type === 'whatsapp' ? 'bg-green-600' : 'bg-orange-600'}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {editingTemplate ? 'Update' : 'Create'} Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

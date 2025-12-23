@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Button } from './ui/button';
+import { useState } from 'react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Screen } from '../App';
+import { Button } from './ui/button';
+import { Screen } from '../types';
 import {
   ChevronLeft,
   TrendingUp,
@@ -230,37 +230,39 @@ export function BusinessInsights({ onNavigate }: BusinessInsightsProps) {
 
         {/* Sales Trend */}
         <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">Sales Trend</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-900">Daily Sales Trend</h3>
             <Badge variant="secondary">Last 7 Days</Badge>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={dailySalesData}>
-              <defs>
-                <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="day" stroke="#6B7280" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="sales"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                fill="url(#salesGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 200, minHeight: 200 }}>
+            <ResponsiveContainer width="100%" height={200} minHeight={200}>
+              <AreaChart data={dailySalesData}>
+                <defs>
+                  <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="day" stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  fill="url(#salesGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
 
         {/* Sales vs Expenses */}
@@ -269,24 +271,26 @@ export function BusinessInsights({ onNavigate }: BusinessInsightsProps) {
             <h3 className="font-bold text-gray-900">Sales vs Expenses</h3>
             <Badge variant="secondary">Last 6 Months</Badge>
           </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={salesVsExpensesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="month" stroke="#6B7280" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend />
-              <Bar dataKey="sales" fill="#10B981" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="expenses" fill="#EF4444" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="profit" fill="#3B82F6" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 250, minHeight: 250 }}>
+            <ResponsiveContainer width="100%" height={250} minHeight={250}>
+              <BarChart data={salesVsExpensesData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="month" stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="sales" fill="#10B981" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="expenses" fill="#EF4444" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="profit" fill="#3B82F6" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
 
         {/* Payment Methods & Hourly Pattern */}
@@ -294,8 +298,8 @@ export function BusinessInsights({ onNavigate }: BusinessInsightsProps) {
           {/* Payment Methods */}
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-4">Payment Methods</h3>
-            <div className="flex items-center justify-center mb-4">
-              <ResponsiveContainer width="100%" height={180}>
+            <div className="flex items-center justify-center mb-4" style={{ width: '100%', height: 180, minHeight: 180 }}>
+              <ResponsiveContainer width="100%" height={180} minHeight={180}>
                 <PieChart>
                   <Pie
                     data={paymentMethodsData}
@@ -333,27 +337,29 @@ export function BusinessInsights({ onNavigate }: BusinessInsightsProps) {
           {/* Hourly Pattern */}
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-4">Peak Hours</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={hourlySalesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="hour" stroke="#6B7280" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="sales"
-                  stroke="#F59E0B"
-                  strokeWidth={3}
-                  dot={{ fill: '#F59E0B', r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 200, minHeight: 200 }}>
+              <ResponsiveContainer width="100%" height={200} minHeight={200}>
+                <LineChart data={hourlySalesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="hour" stroke="#6B7280" style={{ fontSize: '12px' }} />
+                  <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#F59E0B"
+                    strokeWidth={3}
+                    dot={{ fill: '#F59E0B', r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
             <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
               <div className="flex items-center gap-2 text-sm text-orange-700">
                 <Clock className="w-4 h-4" />

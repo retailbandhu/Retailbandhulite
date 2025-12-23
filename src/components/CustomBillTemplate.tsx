@@ -1,7 +1,7 @@
-import { ArrowLeft, Upload, Save } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Screen, StoreInfo } from '../App';
+import { Screen, StoreInfo } from '../types';
+import { ArrowLeft, Save, Upload } from 'lucide-react';
 
 interface CustomBillTemplateProps {
   onNavigate: (screen: Screen) => void;

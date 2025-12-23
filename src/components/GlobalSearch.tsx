@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { Screen, Product } from '../App';
+import { Screen, Product } from '../types';
 import {
   Search,
   X,

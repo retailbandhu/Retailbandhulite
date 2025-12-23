@@ -1,6 +1,6 @@
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Screen, BillItem, StoreInfo } from '../App';
+import { Screen, BillItem, StoreInfo } from '../types';
 import { storage } from '../utils/storage';
 import { useEffect, useState } from 'react';
 

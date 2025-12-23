@@ -1,14 +1,11 @@
 
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-import path from 'path';
+  import { defineConfig } from 'vite';
+  import react from '@vitejs/plugin-react-swc';
+  import path from 'path';
 
-export default defineConfig({
-  plugins: [react()],
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
-  },
-  resolve: {
+  export default defineConfig({
+    plugins: [react()],
+    resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
         'vaul@1.1.2': 'vaul',
@@ -23,6 +20,7 @@ export default defineConfig({
         'embla-carousel-react@8.6.0': 'embla-carousel-react',
         'cmdk@1.1.1': 'cmdk',
         'class-variance-authority@0.7.1': 'class-variance-authority',
+        '@supabase/supabase-js@2': '@supabase/supabase-js',
         '@radix-ui/react-tooltip@1.1.8': '@radix-ui/react-tooltip',
         '@radix-ui/react-toggle@1.1.2': '@radix-ui/react-toggle',
         '@radix-ui/react-toggle-group@1.1.2': '@radix-ui/react-toggle-group',
@@ -51,7 +49,6 @@ export default defineConfig({
         '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
         '@jsr/supabase__supabase-js@2.49.8': '@jsr/supabase__supabase-js',
         '@': path.resolve(__dirname, './src'),
-        '@assets': path.resolve(__dirname, './attached_assets'),
       },
     },
     build: {
@@ -59,15 +56,7 @@ export default defineConfig({
       outDir: 'build',
     },
     server: {
-      port: 5000,
-      host: '0.0.0.0',
-      allowedHosts: true,
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3001',
-          changeOrigin: true,
-          secure: false,
-        },
-      },
+      port: 3000,
+      open: true,
     },
   });

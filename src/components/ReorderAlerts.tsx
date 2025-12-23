@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, Package, TrendingDown, Settings as SettingsIcon, ShoppingCart } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  AlertTriangle, 
+  CheckCircle, 
+  Settings as SettingsIcon, 
+  Bell, 
+  BellOff, 
+  Package,
+  TrendingDown,
+  ShoppingCart
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -7,9 +17,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { storage } from '../utils/storage';
-import type { Screen, Product } from '../App';
+import type { Screen, Product } from '../types';
 
 interface ReorderAlertsProps {
   onNavigate: (screen: Screen) => void;

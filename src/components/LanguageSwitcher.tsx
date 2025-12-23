@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ArrowLeft, Globe, Check } from 'lucide-react';
-import { Screen } from '../App';
+import { Screen } from '../types';
 import { Button } from './ui/button';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 
 interface LanguageSwitcherProps {
   onNavigate: (screen: Screen) => void;

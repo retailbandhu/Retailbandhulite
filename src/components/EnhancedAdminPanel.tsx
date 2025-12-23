@@ -4,9 +4,10 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { toast } from 'sonner';
-import { Screen } from '../App';
+import { toast } from 'sonner@2.0.3';
+import { Screen } from '../types';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { AdminLogin } from './AdminLogin';
 import { AdminAnalyticsAdvanced } from './AdminAnalyticsAdvanced';
 import { AdminUserMonitoring } from './AdminUserMonitoring';
 import { AdminBulkOperations } from './AdminBulkOperations';
@@ -69,7 +70,7 @@ import {
   Command,
 } from 'lucide-react';
 
-const API_BASE_URL = '/api/admin';
+const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-c4099df5/admin`;
 
 interface AdminPanelProps {
   onNavigate: (screen: Screen) => void;
@@ -78,7 +79,6 @@ interface AdminPanelProps {
 type AdminTab = 
   | 'overview'
   | 'users'
-  | 'stores'
   | 'features'
   | 'subscriptions'
   | 'content'
@@ -123,152 +123,32 @@ interface AuditLog {
 }
 
 export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+  // ALL STATE HOOKS MUST BE AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Keyboard shortcut for Command Palette (Ctrl+K or Cmd+K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowCommandPalette(true);
-      }
-      // Escape to close
-      if (e.key === 'Escape') {
-        setShowCommandPalette(false);
-        setShowNotifications(false);
-      }
-    };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  
-  // Real data from database
+  // Mock data state - moved to top
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalStores: 0,
-    totalProducts: 0,
-    totalCustomers: 0,
-    totalBills: 0,
-    totalRevenue: 0,
-    todayBills: 0,
+    totalUsers: 15847,
+    activeUsers: 12653,
+    totalRevenue: 847250,
+    monthlyRevenue: 124580,
+    freeUsers: 8245,
+    proUsers: 5892,
+    automationUsers: 1710,
     averageSessionTime: '12.5 min',
     errorRate: 0.3,
     apiResponseTime: '245ms',
     systemUptime: '99.98%',
     storageUsed: '34.2 GB',
+    apiCalls: 1245680,
+    conversionRate: 4.2,
   });
-
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [allStores, setAllStores] = useState<any[]>([]);
-  const [allBills, setAllBills] = useState<any[]>([]);
-
-  // Check if user is admin on mount
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/check`, { credentials: 'include' });
-        if (response.ok) {
-          const data = await response.json();
-          setIsAdmin(data.isAdmin);
-          if (data.isAdmin) {
-            fetchAllData();
-          }
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAdmin();
-  }, []);
-
-  const fetchAllData = async () => {
-    try {
-      const [statsRes, usersRes, storesRes, billsRes, flagsRes, configRes, logsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/stats`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/users`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/stores`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/bills`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/feature-flags`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/config`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/audit-logs`, { credentials: 'include' }),
-      ]);
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(prev => ({ ...prev, ...statsData }));
-      }
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setAllUsers(usersData);
-      }
-      if (storesRes.ok) {
-        const storesData = await storesRes.json();
-        setAllStores(storesData);
-      }
-      if (billsRes.ok) {
-        const billsData = await billsRes.json();
-        setAllBills(billsData);
-      }
-      if (flagsRes.ok) {
-        const flagsData = await flagsRes.json();
-        setFeatureFlags(flagsData.map((f: any) => ({
-          id: f.id.toString(),
-          name: f.name,
-          description: f.description || '',
-          enabled: f.enabled,
-          userPercentage: f.userPercentage || 100,
-          category: f.category || 'General',
-        })));
-      }
-      if (configRes.ok) {
-        const configData = await configRes.json();
-        const configMap: Record<string, any> = {};
-        configData.forEach((c: any) => {
-          configMap[c.key] = c.value;
-        });
-        setAppConfig(prev => ({
-          ...prev,
-          maintenanceMode: configMap.maintenanceMode === 'true' || configMap.maintenanceMode === true,
-          forceUpdate: configMap.forceUpdate === 'true' || configMap.forceUpdate === true,
-          minVersion: configMap.minVersion || prev.minVersion,
-          maxProductsPerStore: parseInt(configMap.maxProductsPerStore) || prev.maxProductsPerStore,
-          maxBillsPerMonth: parseInt(configMap.maxBillsPerMonth) || prev.maxBillsPerMonth,
-          enableSignup: configMap.enableSignup !== 'false' && configMap.enableSignup !== false,
-          enableSocialLogin: configMap.enableSocialLogin !== 'false' && configMap.enableSocialLogin !== false,
-          defaultLanguage: configMap.defaultLanguage || prev.defaultLanguage,
-          whatsappApiEnabled: configMap.whatsappApiEnabled !== 'false' && configMap.whatsappApiEnabled !== false,
-          smsNotificationsEnabled: configMap.smsNotificationsEnabled !== 'false' && configMap.smsNotificationsEnabled !== false,
-          emailNotificationsEnabled: configMap.emailNotificationsEnabled !== 'false' && configMap.emailNotificationsEnabled !== false,
-        }));
-      }
-      if (logsRes.ok) {
-        const logsData = await logsRes.json();
-        setAuditLogs(logsData.map((l: any) => ({
-          id: l.id.toString(),
-          timestamp: l.createdAt,
-          admin: l.adminName || 'System',
-          action: l.action,
-          target: l.target || '',
-          details: l.details || '',
-          status: l.status || 'success',
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-      toast.error('Failed to fetch admin data');
-    }
-  };
 
   const [systemHealth, setSystemHealth] = useState({
     status: 'healthy',
@@ -278,24 +158,6 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     cache: 'operational',
     lastCheck: new Date().toISOString(),
   });
-
-  // Auto-refresh metrics every 30 seconds
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      const interval = setInterval(() => {
-        refreshMetrics();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [activeTab]);
-
-  const refreshMetrics = async () => {
-    if (isAdmin) {
-      await fetchAllData();
-      toast.success('Data refreshed');
-    }
-  };
-
 
   const [users, setUsers] = useState<User[]>([
     {
@@ -336,7 +198,56 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     },
   ]);
 
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([
+    {
+      id: 'voice-billing',
+      name: 'Voice Billing',
+      description: 'AI-powered voice input for creating bills',
+      enabled: true,
+      userPercentage: 100,
+      category: 'Core Features',
+    },
+    {
+      id: 'whatsapp-automation',
+      name: 'WhatsApp Automation',
+      description: 'Automated WhatsApp marketing campaigns',
+      enabled: true,
+      userPercentage: 75,
+      category: 'Marketing',
+    },
+    {
+      id: 'barcode-scanner',
+      name: 'Barcode Scanner',
+      description: 'Camera-based barcode scanning',
+      enabled: true,
+      userPercentage: 90,
+      category: 'Inventory',
+    },
+    {
+      id: 'ai-insights',
+      name: 'AI Business Insights',
+      description: 'AI-powered business recommendations',
+      enabled: false,
+      userPercentage: 10,
+      category: 'Analytics',
+    },
+    {
+      id: 'loyalty-program',
+      name: 'Loyalty Program',
+      description: 'Customer rewards and points system',
+      enabled: true,
+      userPercentage: 50,
+      category: 'Customer Management',
+    },
+    {
+      id: 'multi-store',
+      name: 'Multi-Store Management',
+      description: 'Manage multiple store locations',
+      enabled: false,
+      userPercentage: 0,
+      category: 'Core Features',
+    },
+  ]);
 
   const [appConfig, setAppConfig] = useState({
     maintenanceMode: false,
@@ -353,87 +264,102 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     emailNotificationsEnabled: true,
   });
 
-  const toggleFeature = async (featureId: string) => {
-    const flag = featureFlags.find(f => f.id === featureId);
-    if (!flag) return;
-    
-    try {
-      const res = await fetch(`${API_BASE_URL}/feature-flags/${featureId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ enabled: !flag.enabled }),
-      });
-      
-      if (res.ok) {
-        setFeatureFlags(prev =>
-          prev.map(f =>
-            f.id === featureId ? { ...f, enabled: !f.enabled } : f
-          )
-        );
-        toast.success('Feature flag updated');
-      } else {
-        toast.error('Failed to update feature flag');
-      }
-    } catch (error) {
-      console.error('Error updating feature flag:', error);
-      toast.error('Failed to update feature flag');
+  // ALL EFFECTS MUST BE AFTER STATE BUT BEFORE CONDITIONAL RETURNS
+  // Check admin authentication on mount
+  useEffect(() => {
+    const adminAuth = localStorage.getItem('admin_authenticated');
+    if (adminAuth === 'true') {
+      setIsAuthenticated(true);
     }
+  }, []);
+
+  // Keyboard shortcut for Command Palette (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+      // Escape to close
+      if (e.key === 'Escape') {
+        setShowCommandPalette(false);
+        setShowNotifications(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Auto-refresh metrics every 30 seconds
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      const interval = setInterval(() => {
+        refreshMetrics();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
+  // HANDLER FUNCTIONS
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
   };
 
-  const updateUserPercentage = async (featureId: string, percentage: number) => {
-    const previousFlags = [...featureFlags];
-    
+  const handleAdminLogout = () => {
+    localStorage.removeItem('admin_authenticated');
+    localStorage.removeItem('admin_login_time');
+    localStorage.removeItem('admin_username');
+    setIsAuthenticated(false);
+    toast.success('Logged out from Admin Panel');
+  };
+
+  const refreshMetrics = async () => {
+    // Simulate live metrics update
+    setStats(prev => ({
+      ...prev,
+      activeUsers: prev.activeUsers + Math.floor(Math.random() * 20 - 10),
+      apiResponseTime: `${Math.floor(Math.random() * 100 + 200)}ms`,
+    }));
+  };
+
+  const logAction = (action: string, target: string, details: string, status: 'success' | 'failure' = 'success') => {
+    const newLog: AuditLog = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      admin: 'Super Admin',
+      action,
+      target,
+      details,
+      status,
+    };
+    setAuditLogs(prev => [newLog, ...prev.slice(0, 99)]); // Keep last 100 logs
+  };
+
+  const toggleFeature = (featureId: string) => {
+    setFeatureFlags(prev =>
+      prev.map(f =>
+        f.id === featureId ? { ...f, enabled: !f.enabled } : f
+      )
+    );
+    toast.success('Feature flag updated');
+  };
+
+  const updateUserPercentage = (featureId: string, percentage: number) => {
     setFeatureFlags(prev =>
       prev.map(f =>
         f.id === featureId ? { ...f, userPercentage: percentage } : f
       )
     );
-    
-    try {
-      const res = await fetch(`${API_BASE_URL}/feature-flags/${featureId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ userPercentage: percentage }),
-      });
-      
-      if (!res.ok) {
-        setFeatureFlags(previousFlags);
-        toast.error('Failed to update rollout percentage');
-      }
-    } catch (error) {
-      console.error('Error updating user percentage:', error);
-      setFeatureFlags(previousFlags);
-      toast.error('Failed to update rollout percentage');
-    }
   };
 
-  const toggleMaintenanceMode = async () => {
-    const newValue = !appConfig.maintenanceMode;
-    
-    try {
-      const res = await fetch(`${API_BASE_URL}/config/maintenanceMode`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ value: newValue.toString() }),
-      });
-      
-      if (res.ok) {
-        setAppConfig(prev => ({ ...prev, maintenanceMode: newValue }));
-        toast.success(
-          newValue
-            ? 'Maintenance mode enabled'
-            : 'Maintenance mode disabled'
-        );
-      } else {
-        toast.error('Failed to update maintenance mode');
-      }
-    } catch (error) {
-      console.error('Error updating maintenance mode:', error);
-      toast.error('Failed to update maintenance mode');
-    }
+  const toggleMaintenanceMode = () => {
+    setAppConfig(prev => ({ ...prev, maintenanceMode: !prev.maintenanceMode }));
+    toast.success(
+      appConfig.maintenanceMode
+        ? 'Maintenance mode disabled'
+        : 'Maintenance mode enabled'
+    );
   };
 
   const suspendUser = (userId: string) => {
@@ -452,10 +378,20 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     toast.success('User plan updated');
   };
 
+  // NOW WE CAN SAFELY DO CONDITIONAL RETURN - ALL HOOKS HAVE BEEN CALLED
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <AdminLogin 
+        onLoginSuccess={handleLoginSuccess}
+        onBack={() => onNavigate('dashboard')}
+      />
+    );
+  }
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'stores', label: 'Store Management', icon: Package },
     { id: 'features', label: 'Feature Flags', icon: Zap },
     { id: 'subscriptions', label: 'Subscriptions', icon: DollarSign },
     { id: 'content', label: 'Content CMS', icon: FileText },
@@ -470,111 +406,111 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
 
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Quick Stats - Real Data from Database */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center justify-between mb-2">
             <Users className="w-8 h-8 text-blue-600" />
-            <Badge className="bg-blue-600">Live</Badge>
+            <Badge className="bg-blue-600">+12%</Badge>
           </div>
           <div className="text-3xl font-bold text-blue-900 mb-1">
             {stats.totalUsers.toLocaleString()}
           </div>
           <div className="text-sm text-blue-700">Total Users</div>
           <div className="text-xs text-blue-600 mt-2">
-            {stats.totalStores.toLocaleString()} stores created
+            {stats.activeUsers.toLocaleString()} active today
           </div>
         </Card>
 
         <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="w-8 h-8 text-green-600" />
-            <Badge className="bg-green-600">Live</Badge>
+            <Badge className="bg-green-600">+8%</Badge>
           </div>
           <div className="text-3xl font-bold text-green-900 mb-1">
-            ₹{stats.totalRevenue.toLocaleString()}
+            ₹{stats.monthlyRevenue.toLocaleString()}
           </div>
-          <div className="text-sm text-green-700">Total Revenue</div>
+          <div className="text-sm text-green-700">Monthly Revenue</div>
           <div className="text-xs text-green-600 mt-2">
-            {stats.totalBills.toLocaleString()} bills generated
+            ₹{stats.totalRevenue.toLocaleString()} total
           </div>
         </Card>
 
         <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <div className="flex items-center justify-between mb-2">
-            <Package className="w-8 h-8 text-purple-600" />
-            <Badge className="bg-purple-600">Live</Badge>
+            <Activity className="w-8 h-8 text-purple-600" />
+            <Badge className="bg-green-600">Good</Badge>
           </div>
           <div className="text-3xl font-bold text-purple-900 mb-1">
-            {stats.totalProducts.toLocaleString()}
+            {stats.errorRate}%
           </div>
-          <div className="text-sm text-purple-700">Total Products</div>
+          <div className="text-sm text-purple-700">Error Rate</div>
           <div className="text-xs text-purple-600 mt-2">
-            {stats.totalCustomers.toLocaleString()} customers
+            {stats.apiResponseTime} avg response
           </div>
         </Card>
 
         <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp className="w-8 h-8 text-orange-600" />
-            <Badge className="bg-orange-600">Today</Badge>
+            <Badge className="bg-orange-600">Active</Badge>
           </div>
           <div className="text-3xl font-bold text-orange-900 mb-1">
-            {stats.todayBills}
+            {stats.averageSessionTime}
           </div>
-          <div className="text-sm text-orange-700">Bills Today</div>
-          <div className="text-xs text-orange-600 mt-2">System uptime: {stats.systemUptime}</div>
+          <div className="text-sm text-orange-700">Avg Session Time</div>
+          <div className="text-xs text-orange-600 mt-2">Per user engagement</div>
         </Card>
       </div>
 
-      {/* Store Distribution */}
+      {/* Subscription Distribution */}
       <Card className="p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Database className="w-5 h-5 text-blue-600" />
-          Platform Overview
+          <DollarSign className="w-5 h-5 text-blue-600" />
+          Subscription Distribution
         </h3>
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Active Stores</span>
+              <span className="text-sm font-medium">Free Plan</span>
               <span className="text-sm text-gray-600">
-                {allStores.length} stores
+                {stats.freeUsers} users ({((stats.freeUsers / stats.totalUsers) * 100).toFixed(1)}%)
+              </span>
+            </div>
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gray-400"
+                style={{ width: `${(stats.freeUsers / stats.totalUsers) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Pro Plan</span>
+              <span className="text-sm text-gray-600">
+                {stats.proUsers} users ({((stats.proUsers / stats.totalUsers) * 100).toFixed(1)}%)
               </span>
             </div>
             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500"
-                style={{ width: allStores.length > 0 ? '100%' : '0%' }}
+                style={{ width: `${(stats.proUsers / stats.totalUsers) * 100}%` }}
               />
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Registered Users</span>
+              <span className="text-sm font-medium">Automation Plan</span>
               <span className="text-sm text-gray-600">
-                {allUsers.length} users
-              </span>
-            </div>
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500"
-                style={{ width: allUsers.length > 0 ? '100%' : '0%' }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Recent Transactions</span>
-              <span className="text-sm text-gray-600">
-                {allBills.length} bills (last 100)
+                {stats.automationUsers} users ({((stats.automationUsers / stats.totalUsers) * 100).toFixed(1)}%)
               </span>
             </div>
             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-orange-500"
-                style={{ width: allBills.length > 0 ? `${Math.min(allBills.length, 100)}%` : '0%' }}
+                style={{ width: `${(stats.automationUsers / stats.totalUsers) * 100}%` }}
               />
             </div>
           </div>
@@ -622,15 +558,6 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     </div>
   );
 
-  const filteredUsers = allUsers.filter(user => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
-    return fullName.includes(query) || 
-           (user.email || '').toLowerCase().includes(query) ||
-           user.stores?.some((s: any) => s.name.toLowerCase().includes(query));
-  });
-
   const renderUsers = () => (
     <div className="space-y-6">
       {/* Search & Filters */}
@@ -645,9 +572,9 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
               className="pl-10"
             />
           </div>
-          <Button variant="outline" onClick={refreshMetrics}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+          <Button variant="outline">
+            <Filter className="w-4 h-4 mr-2" />
+            Filters
           </Button>
           <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
@@ -656,370 +583,119 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
         </div>
       </Card>
 
-      {/* Users Table - Real Data */}
+      {/* Users Table */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">All Users ({allUsers.length})</h3>
-          <Badge className="bg-green-600">Live Data</Badge>
+          <h3 className="font-bold text-lg">All Users ({users.length})</h3>
+          <Button size="sm" className="bg-blue-600">
+            <Plus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
         </div>
 
-        {allUsers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No users found in database</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredUsers.map((user) => (
-              <Card key={user.id} className="p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                      {(user.firstName || user.email || 'U').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-gray-900">
-                          {user.firstName && user.lastName 
-                            ? `${user.firstName} ${user.lastName}` 
-                            : user.email || 'Unknown User'}
-                        </span>
-                        <Badge className="bg-blue-500">
-                          {user.storeCount} store{user.storeCount !== 1 ? 's' : ''}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-gray-600 space-y-0.5">
-                        <div>{user.email || 'No email'}</div>
-                        <div className="flex items-center gap-4">
-                          <span>Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</span>
-                          {user.stores?.length > 0 && (
-                            <span>Store: {user.stores[0].name}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+        <div className="space-y-3">
+          {users.map((user) => (
+            <Card key={user.id} className="p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                    {user.name.charAt(0)}
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (user.stores?.length > 0) {
-                          toast.info(`User has ${user.storeCount} store(s): ${user.stores.map((s: any) => s.name).join(', ')}`);
-                        } else {
-                          toast.info('User has no stores');
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-gray-900">{user.name}</span>
+                      <Badge
+                        className={
+                          user.plan === 'automation'
+                            ? 'bg-orange-500'
+                            : user.plan === 'pro'
+                            ? 'bg-blue-500'
+                            : 'bg-gray-400'
                         }
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-
-  const [selectedStore, setSelectedStore] = useState<any>(null);
-  const [storeSearchQuery, setStoreSearchQuery] = useState('');
-
-  const filteredStores = allStores.filter(store => {
-    if (!storeSearchQuery) return true;
-    const query = storeSearchQuery.toLowerCase();
-    return store.name?.toLowerCase().includes(query) || 
-           store.owner?.toLowerCase().includes(query) ||
-           store.address?.toLowerCase().includes(query);
-  });
-
-  const updateStore = async (storeId: number, updates: any) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/stores/${storeId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(updates),
-      });
-      if (response.ok) {
-        toast.success('Store updated successfully');
-        fetchAllData();
-        setSelectedStore(null);
-      } else {
-        toast.error('Failed to update store');
-      }
-    } catch (error) {
-      console.error('Error updating store:', error);
-      toast.error('Failed to update store');
-    }
-  };
-
-  const renderStores = () => (
-    <div className="space-y-6">
-      {/* Search & Filters */}
-      <Card className="p-4">
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search stores by name, owner, address..."
-              value={storeSearchQuery}
-              onChange={(e) => setStoreSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button variant="outline" onClick={refreshMetrics}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </Card>
-
-      {/* Stores Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <div className="flex items-center gap-3">
-            <Package className="w-8 h-8 text-blue-600" />
-            <div>
-              <div className="text-2xl font-bold text-blue-900">{allStores.length}</div>
-              <div className="text-sm text-blue-700">Total Stores</div>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-green-600" />
-            <div>
-              <div className="text-2xl font-bold text-green-900">
-                ₹{allStores.reduce((sum, s) => sum + (s.totalRevenue || 0), 0).toLocaleString()}
-              </div>
-              <div className="text-sm text-green-700">Total Revenue</div>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <div className="flex items-center gap-3">
-            <Activity className="w-8 h-8 text-purple-600" />
-            <div>
-              <div className="text-2xl font-bold text-purple-900">
-                {allStores.reduce((sum, s) => sum + (s.billCount || 0), 0).toLocaleString()}
-              </div>
-              <div className="text-sm text-purple-700">Total Bills</div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Store Edit Modal */}
-      {selectedStore && (
-        <Card className="p-6 border-2 border-blue-500 bg-blue-50">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-lg flex items-center gap-2">
-              <Edit className="w-5 h-5 text-blue-600" />
-              Edit Store: {selectedStore.name}
-            </h3>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedStore(null)}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Store Name</label>
-              <Input
-                value={selectedStore.name || ''}
-                onChange={(e) => setSelectedStore({ ...selectedStore, name: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Owner Name</label>
-              <Input
-                value={selectedStore.owner || ''}
-                onChange={(e) => setSelectedStore({ ...selectedStore, owner: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Phone</label>
-              <Input
-                value={selectedStore.phone || ''}
-                onChange={(e) => setSelectedStore({ ...selectedStore, phone: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">GSTIN</label>
-              <Input
-                value={selectedStore.gstin || ''}
-                onChange={(e) => setSelectedStore({ ...selectedStore, gstin: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-700">Address</label>
-              <Textarea
-                value={selectedStore.address || ''}
-                onChange={(e) => setSelectedStore({ ...selectedStore, address: e.target.value })}
-                className="mt-1"
-                rows={2}
-              />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Button 
-              className="bg-blue-600"
-              onClick={() => updateStore(selectedStore.id, {
-                name: selectedStore.name,
-                owner: selectedStore.owner,
-                phone: selectedStore.phone,
-                gstin: selectedStore.gstin,
-                address: selectedStore.address,
-              })}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </Button>
-            <Button variant="outline" onClick={() => setSelectedStore(null)}>
-              Cancel
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Stores Table */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">All Stores ({allStores.length})</h3>
-          <Badge className="bg-green-600">Live Data</Badge>
-        </div>
-
-        {allStores.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No stores found in database</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredStores.map((store) => (
-              <Card key={store.id} className="p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div 
-                      className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
-                      style={{ backgroundColor: store.billColor || '#1E88E5' }}
-                    >
-                      {(store.name || 'S').charAt(0).toUpperCase()}
+                      >
+                        {user.plan.toUpperCase()}
+                      </Badge>
+                      <Badge
+                        variant={user.status === 'active' ? 'default' : 'secondary'}
+                        className={
+                          user.status === 'active'
+                            ? 'bg-green-500'
+                            : user.status === 'trial'
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
+                        }
+                      >
+                        {user.status}
+                      </Badge>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-gray-900">{store.name || 'Unnamed Store'}</span>
-                        <Badge className="bg-blue-500">ID: {store.id}</Badge>
-                      </div>
-                      <div className="text-sm text-gray-600 space-y-0.5">
-                        <div className="flex items-center gap-4">
-                          <span>Owner: {store.owner || 'N/A'}</span>
-                          <span>Phone: {store.phone || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span>{store.productCount || 0} products</span>
-                          <span>{store.customerCount || 0} customers</span>
-                          <span>{store.billCount || 0} bills</span>
-                          <span className="font-medium text-green-600">₹{(store.totalRevenue || 0).toLocaleString()}</span>
-                        </div>
+                    <div className="text-sm text-gray-600 space-y-0.5">
+                      <div>{user.storeName}</div>
+                      <div className="flex items-center gap-4">
+                        <span>{user.email}</span>
+                        <span>{user.phone}</span>
+                        <span>Joined: {user.joinedDate}</span>
+                        <span>Last active: {user.lastActive}</span>
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedStore(store)}
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        toast.info(`Store Details:\nProducts: ${store.productCount}\nCustomers: ${store.customerCount}\nBills: ${store.billCount}\nRevenue: ₹${store.totalRevenue?.toLocaleString()}`);
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        )}
+
+                <div className="flex items-center gap-2">
+                  <div className="text-right mr-4">
+                    <div className="font-bold text-green-600">₹{user.revenue}</div>
+                    <div className="text-xs text-gray-500">Total Revenue</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toast.info('Viewing user details...')}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => suspendUser(user.id)}
+                  >
+                    {user.status === 'suspended' ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-600" />
+                    )}
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </Card>
     </div>
   );
-
-  const initializeDefaults = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/init-defaults`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      
-      if (res.ok) {
-        toast.success('Default data initialized');
-        await fetchAllData();
-      } else {
-        toast.error('Failed to initialize defaults');
-      }
-    } catch (error) {
-      console.error('Error initializing defaults:', error);
-      toast.error('Failed to initialize defaults');
-    }
-  };
 
   const renderFeatures = () => (
     <div className="space-y-6">
       <Card className="p-6 bg-blue-50 border-blue-200">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-blue-900 mb-1">Feature Flags Control</h3>
-              <p className="text-sm text-blue-700">
-                Enable/disable features and control rollout percentage. Changes take effect immediately.
-              </p>
-            </div>
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-blue-900 mb-1">Feature Flags Control</h3>
+            <p className="text-sm text-blue-700">
+              Enable/disable features and control rollout percentage. Changes take effect immediately.
+            </p>
           </div>
-          {featureFlags.length === 0 && (
-            <Button onClick={initializeDefaults} className="bg-blue-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Initialize Defaults
-            </Button>
-          )}
         </div>
       </Card>
 
-      {featureFlags.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <h3 className="font-bold text-lg text-gray-900 mb-2">No Feature Flags</h3>
-          <p className="text-gray-600 mb-4">
-            Click "Initialize Defaults" to create default feature flags for voice billing, WhatsApp automation, and more.
-          </p>
-        </Card>
-      ) : (Object.entries(
+      {Object.entries(
         featureFlags.reduce((acc, flag) => {
           if (!acc[flag.category]) acc[flag.category] = [];
           acc[flag.category].push(flag);
           return acc;
         }, {} as Record<string, FeatureFlag[]>)
-      ) as [string, FeatureFlag[]][]).map(([category, flags]) => (
+      ).map(([category, flags]) => (
         <Card key={category} className="p-6">
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-blue-600" />
@@ -1307,55 +983,10 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
 
   const renderDatabase = () => (
     <div className="space-y-6">
-      {/* Database Stats - Real Data */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg flex items-center gap-2">
-            <Database className="w-5 h-5 text-blue-600" />
-            Database Statistics
-          </h3>
-          <Badge className="bg-green-500">Live Data</Badge>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-blue-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.totalUsers}</div>
-            <div className="text-sm text-gray-600">Users</div>
-          </div>
-          <div className="p-4 bg-green-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.totalStores}</div>
-            <div className="text-sm text-gray-600">Stores</div>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-purple-600">{stats.totalProducts.toLocaleString()}</div>
-            <div className="text-sm text-gray-600">Products</div>
-          </div>
-          <div className="p-4 bg-orange-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-orange-600">{stats.totalCustomers.toLocaleString()}</div>
-            <div className="text-sm text-gray-600">Customers</div>
-          </div>
-          <div className="p-4 bg-pink-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-pink-600">{stats.totalBills.toLocaleString()}</div>
-            <div className="text-sm text-gray-600">Bills</div>
-          </div>
-          <div className="p-4 bg-teal-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-teal-600">₹{stats.totalRevenue.toLocaleString()}</div>
-            <div className="text-sm text-gray-600">Total Revenue</div>
-          </div>
-          <div className="p-4 bg-indigo-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-indigo-600">{stats.todayBills}</div>
-            <div className="text-sm text-gray-600">Bills Today</div>
-          </div>
-          <div className="p-4 bg-gray-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-gray-600">{allBills.length}</div>
-            <div className="text-sm text-gray-600">Recent Bills</div>
-          </div>
-        </div>
-      </Card>
-
       <Card className="p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
           <Server className="w-5 h-5 text-blue-600" />
-          System Health
+          Database Management
         </h3>
 
         <div className="space-y-6">
@@ -1365,7 +996,7 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
               <div>
                 <h4 className="font-bold text-gray-900">Database Health</h4>
                 <p className="text-sm text-gray-600">
-                  PostgreSQL database status
+                  Check the status of the database
                 </p>
               </div>
               <Badge
@@ -1547,45 +1178,6 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
     </div>
   );
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading Admin Panel...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Access denied state
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="p-8 max-w-md text-center">
-          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-6">
-            You don't have permission to access the Admin Panel. 
-            Only the first registered user or designated admins can access this area.
-          </p>
-          <div className="space-y-3">
-            <Button 
-              onClick={() => window.location.href = '/api/login'} 
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600"
-            >
-              Login with Replit
-            </Button>
-            <Button onClick={() => onNavigate('marketing')} variant="outline" className="w-full">
-              ← Back to Home
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -1611,22 +1203,23 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
             <div className="flex items-center gap-3">
               <Badge className="bg-white/20 text-white">
                 <Activity className="w-3 h-3 mr-1" />
-                {stats.totalUsers} users
+                {stats.activeUsers.toLocaleString()} online
               </Badge>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-white hover:bg-white/20"
-                onClick={refreshMetrics}
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
               {appConfig.maintenanceMode && (
                 <Badge className="bg-red-500">
                   <AlertTriangle className="w-3 h-3 mr-1" />
                   Maintenance Mode
                 </Badge>
               )}
+              <Button
+                onClick={handleAdminLogout}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20"
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>
@@ -1663,12 +1256,11 @@ export function EnhancedAdminPanel({ onNavigate }: { onNavigate: (screen: Screen
           <div className="col-span-12 md:col-span-9">
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'users' && <AdminUserMonitoring />}
-            {activeTab === 'stores' && renderStores()}
             {activeTab === 'features' && renderFeatures()}
             {activeTab === 'system' && renderSystem()}
             {activeTab === 'content' && <AdminContentCMS />}
             {activeTab === 'subscriptions' && <AdminSubscriptionManagement />}
-            {activeTab === 'analytics' && <AdminAnalyticsAdvanced stats={stats} bills={allBills} stores={allStores} users={allUsers} />}
+            {activeTab === 'analytics' && <AdminAnalyticsAdvanced />}
             {activeTab === 'security' && <AdminSecurityPanel />}
             {activeTab === 'notifications' && <AdminBulkOperations />}
             {activeTab === 'api' && <AdminAPIIntegrations />}

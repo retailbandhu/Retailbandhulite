@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Search, Filter, Download, Eye, Share2, Calendar, Trash2, RotateCcw, Printer, X, ChevronDown } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
+import { ArrowLeft, Search, Filter, Download, Eye, Printer, RefreshCw, Calendar, IndianRupee, ShoppingBag, User, Clock, CreditCard, X, Share2, Trash2, RotateCcw } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { Screen } from '../App';
-import { toast } from 'sonner';
+import { Button } from './ui/button';
+import { Screen } from '../types';
+import { toast } from 'sonner@2.0.3';
 
 interface BillItem {
   id: string;

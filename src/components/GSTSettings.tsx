@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Check, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
+import { gstStorage, validateGSTIN, getStateFromGSTIN, type GSTConfig } from '../utils/gst';
+import type { Screen } from '../types';
+import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card } from './ui/card';
 import { Switch } from './ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Alert, AlertDescription } from './ui/alert';
-import { toast } from 'sonner';
-import { gstStorage, validateGSTIN, getStateFromGSTIN, type GSTConfig } from '../utils/gst';
-import type { Screen } from '../App';
+import { ArrowLeft, AlertCircle, Check } from 'lucide-react';
 
 interface GSTSettingsProps {
   onNavigate: (screen: Screen) => void;

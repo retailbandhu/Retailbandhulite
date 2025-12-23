@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Search, Phone, MessageCircle, TrendingUp, AlertCircle, Download, Filter, X, CheckCircle, History, IndianRupee, Calendar } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { Badge } from './ui/badge';
+import { ArrowLeft, Plus, Users, TrendingUp, Clock, Phone, Wallet, CheckCircle, AlertCircle, Search, Filter, Download, MessageCircle, IndianRupee, History, X, Mic } from 'lucide-react';
 import { Input } from './ui/input';
-import { Screen } from '../App';
-import { toast } from 'sonner';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { VoiceInput } from './VoiceInput';
+import { Screen } from '../types';
+import { toast } from 'sonner@2.0.3';
 import { storage } from '../utils/storage';
+import { speak } from '../utils/speech';
 
 interface KhataEntry {
   id: string;
@@ -40,10 +41,17 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [filterBy, setFilterBy] = useState<'all' | '30days' | '60days' | '90days'>('all');
   const [sortBy, setSortBy] = useState<'amount' | 'name' | 'days'>('amount');
+  
+  // New customer form state
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [newCustomerCredit, setNewCustomerCredit] = useState('');
+  const [newCustomerNotes, setNewCustomerNotes] = useState('');
 
   useEffect(() => {
     const storedCustomers = storage.getCustomers() || [];
@@ -155,6 +163,62 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
     }
   };
 
+  const handleAddCustomer = () => {
+    if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+      toast.error('Please enter customer name and phone');
+      return;
+    }
+
+    if (!newCustomerCredit || parseFloat(newCustomerCredit) <= 0) {
+      toast.error('Please enter valid credit amount');
+      return;
+    }
+
+    const creditAmount = parseFloat(newCustomerCredit);
+
+    // Create new customer
+    const newCustomer: Customer = {
+      id: Date.now().toString(),
+      name: newCustomerName.trim(),
+      phone: newCustomerPhone.trim(),
+      totalCredit: creditAmount,
+      lastTransaction: new Date().toLocaleDateString('en-IN'),
+      transactionCount: 1,
+      daysSinceLastTransaction: 0
+    };
+
+    // Create khata entry
+    const khataEntry: KhataEntry = {
+      id: Date.now().toString(),
+      customerId: newCustomer.id,
+      customerName: newCustomer.name,
+      phone: newCustomer.phone,
+      amount: creditAmount,
+      type: 'credit',
+      date: new Date().toISOString(),
+      notes: newCustomerNotes.trim() || 'Initial credit entry'
+    };
+
+    // Update state
+    const updatedCustomers = [...customers, newCustomer];
+    const updatedEntries = [...khataEntries, khataEntry];
+    
+    setCustomers(updatedCustomers);
+    setKhataEntries(updatedEntries);
+    storage.setCustomers(updatedCustomers);
+    storage.setKhataEntries(updatedEntries);
+
+    toast.success(`${newCustomer.name} added to khata with ₹${creditAmount} credit!`);
+    speak(`${newCustomer.name} ko khata mein add kar diya gaya`);
+
+    // Reset form
+    setNewCustomerName('');
+    setNewCustomerPhone('');
+    setNewCustomerCredit('');
+    setNewCustomerNotes('');
+    setShowAddCustomerModal(false);
+  };
+
   // Filter and sort logic
   let processedCustomers = [...filteredCustomers];
   
@@ -188,7 +252,11 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-white text-xl">Khata Management</h1>
-          <button className="text-white">
+          <button 
+            onClick={() => setShowAddCustomerModal(true)}
+            className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+            aria-label="Add Customer to Khata"
+          >
             <Plus className="w-6 h-6" />
           </button>
         </div>
@@ -226,6 +294,10 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-12 bg-white border-gray-200 rounded-xl"
+          />
+          <VoiceInput
+            onResult={(result) => setSearchQuery(result)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
           />
         </div>
 
@@ -288,73 +360,106 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-900">All Customers ({filteredCustomers.length})</h3>
-            <button className="text-[#1E88E5] text-sm">Sort by Amount</button>
+            <button 
+              onClick={() => setShowAddCustomerModal(true)}
+              className="text-[#1E88E5] text-sm flex items-center gap-1 hover:underline"
+            >
+              <Plus className="w-4 h-4" />
+              Add Customer
+            </button>
           </div>
 
-          <div className="space-y-3">
-            {processedCustomers.map((customer) => (
-              <div key={customer.id} className="bg-white rounded-xl shadow-md p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#1E88E5] to-[#FF6F00] rounded-full flex items-center justify-center text-white">
-                      {customer.name.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-gray-900 mb-1">{customer.name}</h4>
-                      <p className="text-gray-500 text-sm mb-1">{customer.phone}</p>
-                      <p className="text-gray-400 text-xs">{customer.transactionCount} transactions • {customer.lastTransaction}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    {customer.totalCredit > 0 ? (
-                      <>
-                        <p className="text-red-600 mb-1">₹{customer.totalCredit}</p>
-                        <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full">Pending</span>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-green-600 mb-1">₹0</p>
-                        <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full">Clear</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {customer.totalCredit > 0 && (
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-100">
-                    <button
-                      onClick={() => handleCollectPayment(customer)}
-                      className="bg-gradient-to-r from-[#1E88E5] to-blue-600 text-white rounded-lg py-2 flex items-center justify-center gap-2 hover:shadow-md transition-all text-sm"
-                    >
-                      <IndianRupee className="w-4 h-4" />
-                      Collect Payment
-                    </button>
-                    <button
-                      onClick={() => handleViewHistory(customer)}
-                      className="bg-gray-50 text-gray-700 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors text-sm"
-                    >
-                      <History className="w-4 h-4" />
-                      History
-                    </button>
-                    <button
-                      onClick={() => handleSendReminder(customer)}
-                      className="bg-green-50 text-green-700 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-green-100 transition-colors text-sm"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Reminder
-                    </button>
-                    <button 
-                      onClick={() => handleMarkPaid(customer)}
-                      className="bg-purple-50 text-purple-700 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors text-sm"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Mark Paid
-                    </button>
-                  </div>
-                )}
+          {processedCustomers.length === 0 ? (
+            /* Empty State */
+            <div className="bg-white rounded-2xl shadow-md p-8 text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#1E88E5]/10 to-[#FF6F00]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wallet className="w-10 h-10 text-[#1E88E5]" />
               </div>
-            ))}
-          </div>
+              <h4 className="text-gray-900 text-lg mb-2">
+                {customers.length === 0 ? 'No Khata Customers Yet' : 'No Customers Found'}
+              </h4>
+              <p className="text-gray-600 text-sm mb-4">
+                {customers.length === 0 
+                  ? 'Add your first customer jisko credit dena hai'
+                  : searchQuery 
+                    ? 'Try different search terms'
+                    : 'No customers match your filter'
+                }
+              </p>
+              <Button
+                onClick={() => setShowAddCustomerModal(true)}
+                className="bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Customer
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {processedCustomers.map((customer) => (
+                <div key={customer.id} className="bg-white rounded-xl shadow-md p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="w-12 h-12 bg-gradient-to-br from-[#1E88E5] to-[#FF6F00] rounded-full flex items-center justify-center text-white">
+                        {customer.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-gray-900 mb-1">{customer.name}</h4>
+                        <p className="text-gray-500 text-sm mb-1">{customer.phone}</p>
+                        <p className="text-gray-400 text-xs">{customer.transactionCount} transactions • {customer.lastTransaction}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {customer.totalCredit > 0 ? (
+                        <>
+                          <p className="text-red-600 mb-1">₹{customer.totalCredit.toLocaleString()}</p>
+                          <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full">Pending</span>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-green-600 mb-1">₹0</p>
+                          <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full">Clear</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {customer.totalCredit > 0 && (
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-100">
+                      <button
+                        onClick={() => handleCollectPayment(customer)}
+                        className="bg-gradient-to-r from-[#1E88E5] to-blue-600 text-white rounded-lg py-2 flex items-center justify-center gap-2 hover:shadow-md transition-all text-sm"
+                      >
+                        <IndianRupee className="w-4 h-4" />
+                        Collect Payment
+                      </button>
+                      <button
+                        onClick={() => handleViewHistory(customer)}
+                        className="bg-gray-50 text-gray-700 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors text-sm"
+                      >
+                        <History className="w-4 h-4" />
+                        History
+                      </button>
+                      <button
+                        onClick={() => handleSendReminder(customer)}
+                        className="bg-green-50 text-green-700 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-green-100 transition-colors text-sm"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Reminder
+                      </button>
+                      <button 
+                        onClick={() => handleMarkPaid(customer)}
+                        className="bg-purple-50 text-purple-700 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors text-sm"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Mark Paid
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Export Option */}
@@ -377,9 +482,15 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
       {/* Payment Collection Modal - NEW FEATURE */}
       {showPaymentModal && selectedCustomer && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-50">
-          <div className="bg-white rounded-t-3xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-white rounded-t-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl text-gray-900">Collect Payment</h2>
+              <div>
+                <h2 className="text-xl text-gray-900">Collect Payment</h2>
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-green-600" />
+                  Voice enabled - Type ya bolo!
+                </p>
+              </div>
               <button 
                 onClick={() => setShowPaymentModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -399,25 +510,62 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Payment Amount (₹) *</label>
-              <Input
+              <label className="block text-sm text-gray-700 mb-2 flex items-center gap-2">
+                Payment Amount (₹) *
+                <Badge variant="outline" className="text-xs">Voice</Badge>
+              </label>
+              <VoiceInput
                 type="number"
-                placeholder="Enter amount"
+                placeholder="Type or speak amount..."
                 value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
+                onChange={setPaymentAmount}
                 className="h-12"
+                voiceType="number"
+                voiceLabel="Payment amount"
               />
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => setPaymentAmount((selectedCustomer.totalCredit / 2).toString())}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs hover:bg-gray-200"
+                >
+                  Half (₹{(selectedCustomer.totalCredit / 2).toFixed(0)})
+                </button>
+                <button
+                  onClick={() => setPaymentAmount(selectedCustomer.totalCredit.toString())}
+                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs hover:bg-blue-100"
+                >
+                  Full Amount
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Notes (Optional)</label>
-              <Input
+              <label className="block text-sm text-gray-700 mb-2 flex items-center gap-2">
+                Notes (Optional)
+                <Badge variant="outline" className="text-xs">Voice</Badge>
+              </label>
+              <VoiceInput
                 type="text"
-                placeholder="Payment method, reference number, etc."
+                placeholder="Type or speak notes..."
                 value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                className="h-10"
+                onChange={setPaymentNotes}
+                className="h-12"
+                voiceType="text"
+                voiceLabel="Payment notes"
               />
+            </div>
+
+            {/* Voice Tips */}
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-xs text-green-800 mb-2 flex items-center gap-1">
+                <Mic className="w-3 h-3" />
+                <strong>Voice Tips:</strong>
+              </p>
+              <ul className="text-xs text-green-700 space-y-1 ml-4">
+                <li>• Use voice for amount: "500" or "paanch sau"</li>
+                <li>• Use quick buttons for common amounts</li>
+                <li>• Add notes via voice if needed</li>
+              </ul>
             </div>
 
             <Button
@@ -503,6 +651,77 @@ export function KhataManagement({ onNavigate }: KhataManagementProps) {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Customer Modal - NEW FEATURE */}
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-50">
+          <div className="bg-white rounded-t-3xl w-full max-w-md p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl text-gray-900">Add Customer to Khata</h2>
+              <button 
+                onClick={() => setShowAddCustomerModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Customer Name *</label>
+                <Input
+                  type="text"
+                  placeholder="Enter customer name..."
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  className="h-12"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Phone Number *</label>
+                <Input
+                  type="text"
+                  placeholder="Enter phone number..."
+                  value={newCustomerPhone}
+                  onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  className="h-12"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Credit Amount *</label>
+                <Input
+                  type="number"
+                  placeholder="Enter credit amount..."
+                  value={newCustomerCredit}
+                  onChange={(e) => setNewCustomerCredit(e.target.value)}
+                  className="h-12"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Notes (Optional)</label>
+                <Input
+                  type="text"
+                  placeholder="Enter notes..."
+                  value={newCustomerNotes}
+                  onChange={(e) => setNewCustomerNotes(e.target.value)}
+                  className="h-12"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleAddCustomer}
+              className="w-full bg-gradient-to-r from-[#1E88E5] to-[#FF6F00] text-white h-12 flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Customer
+            </Button>
           </div>
         </div>
       )}

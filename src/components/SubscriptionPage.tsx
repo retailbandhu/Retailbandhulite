@@ -1,6 +1,6 @@
 import { ArrowLeft, Check, Zap, Crown, Rocket } from 'lucide-react';
 import { Button } from './ui/button';
-import { Screen } from '../App';
+import { Screen } from '../types';
 
 interface SubscriptionPageProps {
   onNavigate: (screen: Screen) => void;

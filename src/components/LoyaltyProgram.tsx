@@ -7,7 +7,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { 
   loyaltyStorage, 
   getCurrentTier, 
@@ -15,7 +15,7 @@ import {
   type LoyaltyConfig,
   type CustomerLoyalty 
 } from '../utils/loyalty';
-import type { Screen } from '../App';
+import type { Screen } from '../types';
 
 interface LoyaltyProgramProps {
   onNavigate: (screen: Screen) => void;

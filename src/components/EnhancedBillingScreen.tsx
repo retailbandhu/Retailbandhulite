@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Trash2, MessageCircle, Printer, Save, Mic, User, Award, Receipt, Phone, Search, Zap, CreditCard, Banknote, Smartphone, BookOpen, MinusCircle, PlusCircle, StickyNote } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -8,12 +8,15 @@ import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { VoiceButton } from './VoiceButton';
-import { toast } from 'sonner';
+import { VoiceInput } from './VoiceInput';
+import { toast } from 'sonner@2.0.3';
 import { gstStorage, calculateGST, type ProductWithGST } from '../utils/gst';
 import { storage } from '../utils/storage';
 import { loyaltyStorage, awardPointsForPurchase, getCurrentTier } from '../utils/loyalty';
-import type { Screen, Product, BillItem } from '../App';
-import type { ParsedVoiceItem } from '../hooks/useVoiceRecognition';
+import { confirmVoice, speak } from '../utils/speech';
+import { parseVoiceInput, generateConfirmationMessage, generateToastMessage, VOICE_EXAMPLES } from '../utils/voiceParser';
+import type { Screen, Product, BillItem } from '../types';
+import { useCustomers } from '../hooks/useCustomers';
 
 interface EnhancedBillingScreenProps {
   onNavigate: (screen: Screen) => void;
@@ -29,8 +32,12 @@ interface BillItemWithGST extends BillItem {
 }
 
 export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCurrentBill, setProducts }: EnhancedBillingScreenProps) {
+  // Use customers hook for better data management
+  const { customers: customersData } = useCustomers();
+  
   const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
   const [voiceText, setVoiceText] = useState('');
+  const [isListening, setIsListening] = useState(false);
   const [showAddManual, setShowAddManual] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -46,11 +53,12 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [billNotes, setBillNotes] = useState('');
   const [topProducts, setTopProducts] = useState<Product[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const storedCustomers = storage.getCustomers();
-    setCustomers(storedCustomers);
-  }, []);
+    // Use data from hook or fallback to storage
+    setCustomers(customersData.length > 0 ? customersData : storage.getCustomers());
+  }, [customersData]);
 
   useEffect(() => {
     const topProds = storage.getTopProducts();
@@ -69,43 +77,173 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
     }
   }, [selectedCustomer, customers]);
 
-  const handleVoiceInput = useCallback((text: string) => {
+  const handleVoiceInput = async (text: string) => {
+    console.log('🎤 [BILLING] Voice input received:', text);
+    console.log('🎤 [BILLING] Current bill has', currentBill.length, 'items');
+    console.log('🎤 [BILLING] Products available:', products.length);
+    
     setVoiceText(text);
     setShowVoiceOverlay(true);
     
-    setTimeout(() => {
-      setShowVoiceOverlay(false);
-      setVoiceText('');
-    }, 2000);
-  }, []);
-
-  const handleParsedVoiceItems = useCallback((items: ParsedVoiceItem[]) => {
-    const newItems: BillItem[] = [];
+    // Parse voice command
+    const command = parseVoiceInput(text, products);
+    console.log('📝 [BILLING] Parsed command:', JSON.stringify(command, null, 2));
     
-    for (const item of items) {
-      if (item.matchedProduct) {
-        const product = products.find(p => p.id === item.matchedProduct!.id);
-        if (product) {
-          const billItem: BillItem = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            productName: product.name,
-            quantity: item.quantity,
-            price: product.price,
-            total: product.price * item.quantity
-          };
-          newItems.push(billItem);
-        }
+    // Process immediately (removed delay for instant feedback)
+    try {
+      switch (command.type) {
+        case 'add_item':
+          console.log('➕ [BILLING] Processing add_item command');
+          
+          if (command.items && command.items.length > 0) {
+            const itemsToAdd: BillItem[] = [];
+            
+            console.log('🔍 [BILLING] Searching for', command.items.length, 'products...');
+            
+            for (const parsedItem of command.items) {
+              console.log(`   🔍 Looking for: "${parsedItem.productName}" (qty: ${parsedItem.quantity})`);
+              
+              const product = products.find(p => 
+                p.name.toLowerCase() === parsedItem.productName.toLowerCase()
+              );
+              
+              if (product) {
+                console.log(`   ✅ FOUND: ${product.name} @ ₹${product.price}`);
+                
+                const billItem: BillItem = {
+                  id: `${Date.now()}-${Math.random()}`,
+                  productName: product.name,
+                  quantity: parsedItem.quantity,
+                  price: product.price,
+                  total: product.price * parsedItem.quantity
+                };
+                
+                itemsToAdd.push(billItem);
+                console.log(`   📦 Bill item created:`, billItem);
+              } else {
+                console.log(`   ❌ NOT FOUND: "${parsedItem.productName}"`);
+                console.log(`   Available products:`, products.map(p => p.name));
+              }
+            }
+            
+            if (itemsToAdd.length > 0) {
+              console.log(`🛒 [BILLING] Adding ${itemsToAdd.length} item(s) to cart...`);
+              console.log('   📊 Before: currentBill.length =', currentBill.length);
+              
+              // CRITICAL: Add items to cart
+              const newBill = [...currentBill, ...itemsToAdd];
+              console.log('   📊 After: newBill.length =', newBill.length);
+              console.log('   📦 New bill contents:', newBill);
+              
+              setCurrentBill(newBill);
+              console.log('   ✅ setCurrentBill called with', newBill.length, 'items');
+              
+              // Hide overlay
+              setShowVoiceOverlay(false);
+              
+              // Audio + Visual confirmation
+              const confirmMsg = generateConfirmationMessage(command);
+              const toastMsg = generateToastMessage(command);
+              
+              try {
+                await speak(confirmMsg);
+              } catch (error) {
+                console.error('TTS error:', error);
+              }
+              
+              toast.success(toastMsg, {
+                description: `Added: ${itemsToAdd.map(i => `${i.quantity}x ${i.productName}`).join(', ')}`,
+                duration: 3000
+              });
+              
+              console.log('✅ [BILLING] Items successfully added to cart!');
+            } else {
+              console.log('❌ [BILLING] No products found in inventory');
+              setShowVoiceOverlay(false);
+              
+              await speak('Product inventory mein nahi mila. Dobara try karein.');
+              
+              toast.error('Product not found in inventory', {
+                description: 'Try saying exact product name'
+              });
+            }
+          } else {
+            console.log('❌ [BILLING] No items in command');
+            setShowVoiceOverlay(false);
+          }
+          break;
+          
+        case 'delete_last':
+          if (currentBill.length > 0) {
+            const lastItem = currentBill[currentBill.length - 1];
+            setCurrentBill(currentBill.slice(0, -1));
+            
+            try {
+              await speak('Pichla item delete kar diya. Ho gaya!');
+            } catch (error) {
+              console.error('TTS error:', error);
+            }
+            
+            toast.info(generateToastMessage(command), {
+              description: `Removed: ${lastItem.productName}`
+            });
+          } else {
+            toast.error('Bill already empty!');
+          }
+          break;
+          
+        case 'clear_bill':
+          if (currentBill.length > 0) {
+            setCurrentBill([]);
+            
+            try {
+              await speak('Pura bill clear kar diya. Ho gaya!');
+            } catch (error) {
+              console.error('TTS error:', error);
+            }
+            
+            toast.success(generateToastMessage(command));
+          } else {
+            toast.error('Bill already empty!');
+          }
+          break;
+          
+        case 'apply_discount':
+          if (command.discount) {
+            setDiscount(command.discount);
+            
+            try {
+              await speak(`${command.discount} percent discount laga diya. Ho gaya!`);
+            } catch (error) {
+              console.error('TTS error:', error);
+            }
+            
+            toast.success(generateToastMessage(command));
+          }
+          break;
+          
+        default:
+          toast.error('Samajh nahi aaya. Dobara try karein!', {
+            description: 'Try: "2 Maggi aur 1 Pepsi" or "Delete last item"'
+          });
       }
+      
+      setVoiceText('');
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      setShowVoiceOverlay(false);
+      toast.error('Error processing voice command');
     }
+  };
 
-    if (newItems.length > 0) {
-      setCurrentBill([...currentBill, ...newItems]);
-      const itemNames = newItems.map(i => `${i.quantity}x ${i.productName}`).join(', ');
-      toast.success(`Bill mein add ho gaya: ${itemNames}`);
-    } else {
-      toast.error('Product nahi mila. Dobara try karein.');
+  const handleListeningChange = (listening: boolean) => {
+    console.log('Listening state changed:', listening);
+    setIsListening(listening);
+    if (listening) {
+      setShowVoiceOverlay(true);
+      setVoiceText('Listening...');
     }
-  }, [currentBill, products, setCurrentBill]);
+  };
 
   const handleVoiceMobileInput = () => {
     setIsListeningForMobile(true);
@@ -349,25 +487,119 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
           <div className="w-6" />
         </div>
 
-        {/* Integrated Customer Info Card */}
-        <Card className="p-4 bg-white/98 backdrop-blur shadow-md">
-          {/* Customer Selection */}
+        {/* HERO: Voice Billing - Large & Prominent */}
+        <Card className="p-6 bg-white/98 backdrop-blur shadow-xl mb-4 border-2 border-blue-200">
+          <div className="text-center space-y-4">
+            {/* Voice Button - Large */}
+            <div className="relative inline-block">
+              <div className="w-20 h-20 mx-auto relative">
+                {/* Pulse Animation Ring - Behind button */}
+                <div className="absolute inset-0 w-20 h-20 rounded-full border-4 border-blue-400 opacity-20 animate-ping pointer-events-none"></div>
+                
+                {/* Voice Button - On Top */}
+                <div className="relative z-10">
+                  <VoiceButton onVoiceInput={handleVoiceInput} onListeningChange={handleListeningChange} />
+                </div>
+                
+                <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[10px] px-2 py-0.5 h-5 border-2 border-white shadow-lg animate-pulse z-20 pointer-events-none">
+                  BETA
+                </Badge>
+              </div>
+            </div>
+
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Mic className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-orange-500 bg-clip-text text-transparent">
+                  Voice Billing
+                </h2>
+                <Badge variant="outline" className="text-xs px-2 py-0.5 bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300">
+                  🇮🇳 Hinglish
+                </Badge>
+              </div>
+              
+              <p className="text-sm text-gray-600 max-w-xs mx-auto">
+                बस बोलो और bill ready!
+              </p>
+
+              {/* Example Text - Prominent */}
+              <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 mt-3">
+                <p className="text-xs text-gray-500 mb-2">Voice Commands:</p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Mic className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 font-medium">"2 Maggi aur 1 Pepsi"</p>
+                      <p className="text-xs text-gray-500">Add items to cart</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Mic className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 font-medium">"Delete last item"</p>
+                      <p className="text-xs text-gray-500">Remove last added item</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Mic className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 font-medium">"10 percent discount"</p>
+                      <p className="text-xs text-gray-500">Apply discount</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Mic className="w-3 h-3 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 font-medium">"Clear bill"</p>
+                      <p className="text-xs text-gray-500">Remove all items</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="flex items-center justify-center gap-4 text-xs text-gray-500 pt-2">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                  Hindi & English
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  Auto-Add to Cart
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Customer Details Card - Compact & Secondary */}
+        <Card className="p-4 bg-white/95 backdrop-blur shadow-md">
+          {/* Customer Selection - Compact */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-600" />
+              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-blue-600" />
               </div>
-              <Label className="text-sm">Customer Details</Label>
+              <Label className="text-xs text-gray-600">Customer</Label>
               {customerLoyalty && (
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  <Award className="w-3 h-3 mr-1 inline" />
+                <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
+                  <Award className="w-2.5 h-2.5 mr-0.5 inline" />
                   {getCurrentTier(customerLoyalty.lifetimeSpend, loyaltyStorage.getConfig()).name}
                 </Badge>
               )}
             </div>
 
             <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-              <SelectTrigger className="h-11">
+              <SelectTrigger className="h-10 text-sm">
                 <SelectValue placeholder="Walk-in Customer" />
               </SelectTrigger>
               <SelectContent>
@@ -380,34 +612,34 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
               </SelectContent>
             </Select>
 
-            {/* Loyalty Points Inline */}
+            {/* Loyalty Points - Inline */}
             {customerLoyalty && (
-              <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-200">
-                <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-amber-600" />
-                  <span className="text-sm text-amber-900">{customerLoyalty.totalPoints} points</span>
+              <div className="flex items-center justify-between px-2.5 py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-200">
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-xs text-amber-900">{customerLoyalty.totalPoints} points</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Mobile Number Section - Integrated */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-green-600" />
+          {/* Mobile Number - Compact */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                  <MessageCircle className="w-3 h-3 text-green-600" />
                 </div>
-                <Label className="text-sm">Mobile Number</Label>
+                <Label className="text-xs text-gray-600">Mobile</Label>
               </div>
-              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
-                WhatsApp Ready
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-green-50 text-green-700 border-green-300">
+                WhatsApp
               </Badge>
             </div>
             
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">
                   +91
                 </div>
                 <Input
@@ -415,57 +647,56 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
                   placeholder="98765 43210"
                   value={customerMobile}
                   onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className={`pl-12 h-11 ${customerMobile && !validateMobileNumber(customerMobile) ? 'border-red-300 focus:border-red-400' : customerMobile ? 'border-green-300 focus:border-green-400' : ''}`}
+                  className={`pl-10 h-9 text-sm ${customerMobile && !validateMobileNumber(customerMobile) ? 'border-red-300 focus:border-red-400' : customerMobile ? 'border-green-300 focus:border-green-400' : ''}`}
                   maxLength={10}
                 />
               </div>
               <button
                 onClick={handleVoiceMobileInput}
                 disabled={isListeningForMobile}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm ${
                   isListeningForMobile 
                     ? 'bg-blue-600 animate-pulse shadow-lg' 
                     : 'bg-gradient-to-br from-blue-600 to-blue-500 hover:shadow-md hover:scale-105 active:scale-95'
                 }`}
               >
-                <Mic className="w-5 h-5 text-white" />
+                <Mic className="w-4 h-4 text-white" />
               </button>
             </div>
             
-            {/* Validation Feedback */}
-            <div className="mt-2">
+            {/* Validation Feedback - Compact */}
+            <div className="mt-1.5">
               {customerMobile ? (
                 validateMobileNumber(customerMobile) ? (
-                  <p className="text-xs text-green-600 flex items-center gap-1.5">
+                  <p className="text-[10px] text-green-600 flex items-center gap-1">
                     <span className="w-1 h-1 bg-green-600 rounded-full"></span>
-                    Bill WhatsApp par directly share hoga
+                    Bill WhatsApp par share hoga
                   </p>
                 ) : (
-                  <p className="text-xs text-red-600 flex items-center gap-1.5">
+                  <p className="text-[10px] text-red-600 flex items-center gap-1">
                     <span className="w-1 h-1 bg-red-600 rounded-full"></span>
-                    Valid 10-digit number enter karein (6-9 se start)
+                    10-digit number (6-9 se start)
                   </p>
                 )
               ) : (
-                <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                <p className="text-[10px] text-gray-500 flex items-center gap-1">
                   <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  Type karein ya mic se bolo (optional)
+                  Optional - Type ya voice se
                 </p>
               )}
             </div>
           </div>
 
-          {/* GST Toggle - Integrated */}
+          {/* GST Toggle - Compact */}
           {gstStorage.getConfig().enableGST && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                    <Receipt className="w-4 h-4 text-purple-600" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Receipt className="w-3 h-3 text-purple-600" />
                   </div>
                   <div>
-                    <Label className="text-sm">GST Invoice</Label>
-                    <p className="text-xs text-gray-500">Tax-compliant billing</p>
+                    <Label className="text-xs">GST Invoice</Label>
                   </div>
                 </div>
                 <Switch checked={enableGST} onCheckedChange={setEnableGST} />
@@ -476,78 +707,43 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
       </div>
 
       <div className="px-4 pt-6 space-y-4">
-        {/* Voice Billing - Compact & Modern (MOVED TO TOP) */}
-        <Card className="p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-200 shadow-md">
-          <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-orange-50 p-3 rounded-lg border border-blue-200">
-            <div className="relative flex-shrink-0">
-              <VoiceButton 
-                onVoiceInput={handleVoiceInput} 
-                onParsedItems={handleParsedVoiceItems}
-                products={products.map(p => ({ id: p.id, name: p.name, price: p.price }))}
-                showBetaBadge={false}
-              />
-              <Badge className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 h-4 border-2 border-white shadow-sm">
-                BETA
-              </Badge>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <Mic className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                <h3 className="text-xs text-gray-900">
-                  Voice Billing
-                </h3>
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-white/80">
-                  🇮🇳 Hinglish
-                </Badge>
-              </div>
-              <p className="text-[11px] text-gray-600 truncate">
-                🎙️ Try: "2 Maggi aur 1 Pepsi"
-              </p>
-            </div>
-          </div>
-        </Card>
-
         {/* Product Search Bar - NEW FEATURE */}
         <Card className="p-4 shadow-sm">
           <Label className="text-xs text-gray-600 mb-2 block flex items-center gap-2">
             <Search className="w-4 h-4" />
-            Product Search (Product Dhundein)
+            Quick Search Product
           </Label>
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Product ka naam likho... (e.g. Maggi, Doodh)"
-              value={productSearch}
-              onChange={(e) => {
-                setProductSearch(e.target.value);
-                setShowSearchResults(e.target.value.length > 0);
-              }}
-              onFocus={() => setShowSearchResults(productSearch.length > 0)}
-              className="h-11 pr-10"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            
-            {/* Search Results Dropdown */}
-            {showSearchResults && filteredProducts.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                {filteredProducts.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => handleSearchSelect(product)}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm">{product.name}</p>
-                        <p className="text-xs text-gray-500">Stock: {product.stock}</p>
-                      </div>
-                      <span className="text-sm text-blue-600">₹{product.price}</span>
+          <VoiceInput
+            value={productSearch}
+            onChange={setProductSearch}
+            placeholder="Type or speak product name..."
+            type="search"
+            className="h-11"
+            voiceType="search"
+            voiceLabel="Search product"
+            onVoiceComplete={() => setShowSearchResults(true)}
+          />
+          
+          {/* Search Results Dropdown */}
+          {showSearchResults && filteredProducts.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+              {filteredProducts.map((product) => (
+                <button
+                  key={product.id}
+                  onClick={() => handleSearchSelect(product)}
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm">{product.name}</p>
+                      <p className="text-xs text-gray-500">Stock: {product.stock}</p>
                     </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                    <span className="text-sm text-blue-600">₹{product.price}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Quick Add Hot Items - NEW FEATURE */}
@@ -555,7 +751,7 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
           <Card className="p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="w-4 h-4 text-orange-500" />
-              <Label className="text-xs text-gray-600">Fast-Moving Items (Tez Bikne Wale)</Label>
+              <Label className="text-xs text-gray-600">Fast-Moving Items</Label>
             </div>
             <div className="flex flex-wrap gap-2">
               {topProducts.slice(0, 6).map((product) => (
@@ -788,13 +984,15 @@ export function EnhancedBillingScreen({ onNavigate, products, currentBill, setCu
                 <StickyNote className="w-4 h-4" />
                 Notes (Optional)
               </Label>
-              <Input
-                type="text"
-                placeholder="e.g., Delivery address, special instructions..."
+              <VoiceInput
                 value={billNotes}
-                onChange={(e) => setBillNotes(e.target.value)}
+                onChange={setBillNotes}
+                placeholder="Type or speak notes..."
+                type="text"
                 className="h-11"
                 maxLength={100}
+                voiceType="text"
+                voiceLabel="Speak notes"
               />
             </Card>
 

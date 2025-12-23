@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { toast } from 'sonner@2.0.3';
+import { useLandingPageContent } from '../hooks/useAdminContent';
+import { Screen } from '../types';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { SocialProof } from './SocialProof';
-import { PWAInstallPrompt } from './PWAInstallPrompt';
-import { toast } from 'sonner';
-import { useLandingPageContent } from '../hooks/useAdminContent';
-import { Screen } from '../App';
-import bandhuMascot from '@assets/retail_bandhu_logo.png';
+import bandhuMascot from 'figma:asset/4d93b3d1b087e58174e0c66cc9a52e892bfab633.png';
 import { 
   Mic, 
   MessageSquare, 
@@ -36,13 +34,9 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
   const [showInstallPrompt, setShowInstallPrompt] = useState(true);
   const { content, loading } = useLandingPageContent();
 
-  const handleGetStarted = () => {
-    window.location.href = '/api/login';
-  };
+  const handleGetStarted = () => onNavigate('splash');
   const handleWatchDemo = () => onNavigate('videos');
-  const handleLogin = () => {
-    window.location.href = '/api/login';
-  };
+  const handleLogin = () => onNavigate('login');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
@@ -548,7 +542,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div>
               <h4 className="mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">Features</button></li>
+                <li><button onClick={() => onNavigate?.('features')} className="hover:text-white transition-colors">Features</button></li>
                 <li><button onClick={() => window.scrollTo({ top: document.getElementById('pricing')?.offsetTop || 0, behavior: 'smooth' })} className="hover:text-white transition-colors">Pricing</button></li>
                 <li><button onClick={handleWatchDemo} className="hover:text-white transition-colors">Demo</button></li>
                 <li><button onClick={() => toast.info('🚀 Updates coming soon! Follow us for latest features.')} className="hover:text-white transition-colors">Updates</button></li>
@@ -566,7 +560,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div>
               <h4 className="mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><button onClick={() => onNavigate?.('about-us')} className="hover:text-white transition-colors">About Us</button></li>
+                <li><button onClick={() => onNavigate?.('about')} className="hover:text-white transition-colors">About Us</button></li>
                 <li><button onClick={() => onNavigate?.('blog')} className="hover:text-white transition-colors">Blog</button></li>
                 <li><button onClick={() => onNavigate?.('careers')} className="hover:text-white transition-colors">Careers</button></li>
                 <li><button onClick={() => onNavigate?.('contact')} className="hover:text-white transition-colors">Contact</button></li>
@@ -577,20 +571,14 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-gray-400 text-sm">© 2024 Retail Bandhu Lite. All rights reserved.</p>
               <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => toast.info('Privacy Policy coming soon!')}
-                  className="text-gray-400 hover:text-white transition text-sm"
-                >
+                <button className="text-gray-400 hover:text-white transition text-sm">
                   Privacy Policy
                 </button>
-                <button 
-                  onClick={() => toast.info('Terms of Service coming soon!')}
-                  className="text-gray-400 hover:text-white transition text-sm"
-                >
+                <button className="text-gray-400 hover:text-white transition text-sm">
                   Terms of Service
                 </button>
                 <button 
-                  onClick={() => onNavigate?.('admin-panel')}
+                  onClick={() => onNavigate('admin-panel')}
                   className="text-gray-700 hover:text-gray-400 transition text-xs opacity-30 hover:opacity-100"
                 >
                   Admin

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, TrendingDown, Calendar, Tag, Trash2, Download, Filter, X, Repeat, Paperclip, Upload, Edit2, CheckCircle } from 'lucide-react';
-import { Button } from './ui/button';
+import { ArrowLeft, Plus, TrendingDown, Calendar, Filter, Download, X, Trash2, Edit, Search, BarChart3, PieChart, DollarSign, AlertCircle, Clock, Repeat, Paperclip, Mic } from 'lucide-react';
 import { Input } from './ui/input';
-import { Screen } from '../App';
+import { Button } from './ui/button';
+import { VoiceInput } from './VoiceInput';
+import { Screen } from '../types';
 import { storage } from '../utils/storage';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
+import { speak } from '../utils/speech';
+import { Badge } from './ui/badge';
 
 interface Expense {
   id: string;
@@ -186,9 +189,15 @@ export function ExpenseTracker({ onNavigate }: ExpenseTrackerProps) {
       {/* Add Expense Modal */}
       {showAddExpense && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-6">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md animate-slide-up">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md animate-slide-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl text-gray-900">Add Expense</h2>
+              <div>
+                <h2 className="text-xl text-gray-900">Add Expense</h2>
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-purple-600" />
+                  Voice enabled - Type ya bolo!
+                </p>
+              </div>
               <button onClick={() => setShowAddExpense(false)} className="text-gray-400">
                 ✕
               </button>
@@ -216,28 +225,51 @@ export function ExpenseTracker({ onNavigate }: ExpenseTrackerProps) {
                 </div>
               </div>
 
-              {/* Amount */}
+              {/* Amount with Voice */}
               <div>
-                <label className="text-gray-700 text-sm mb-2 block">Amount (₹)</label>
-                <Input
+                <label className="text-gray-700 text-sm mb-2 block flex items-center gap-2">
+                  Amount (₹)
+                  <Badge variant="outline" className="text-xs">Voice</Badge>
+                </label>
+                <VoiceInput
                   type="number"
-                  placeholder="Enter amount"
+                  placeholder="Type or speak amount..."
                   value={newExpense.amount}
-                  onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                  onChange={(value) => setNewExpense({ ...newExpense, amount: value })}
                   className="h-12"
+                  voiceType="number"
+                  voiceLabel="Expense amount"
                 />
               </div>
 
-              {/* Description */}
+              {/* Description with Voice */}
               <div>
-                <label className="text-gray-700 text-sm mb-2 block">Description</label>
-                <Input
+                <label className="text-gray-700 text-sm mb-2 block flex items-center gap-2">
+                  Description
+                  <Badge variant="outline" className="text-xs">Voice</Badge>
+                </label>
+                <VoiceInput
                   type="text"
-                  placeholder="Enter description"
+                  placeholder="Type or speak description..."
                   value={newExpense.description}
-                  onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+                  onChange={(value) => setNewExpense({ ...newExpense, description: value })}
                   className="h-12"
+                  voiceType="text"
+                  voiceLabel="Expense description"
                 />
+              </div>
+
+              {/* Voice Tips */}
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <p className="text-xs text-purple-800 mb-2 flex items-center gap-1">
+                  <Mic className="w-3 h-3" />
+                  <strong>Quick Voice Tips:</strong>
+                </p>
+                <ul className="text-xs text-purple-700 space-y-1 ml-4">
+                  <li>• Select category first</li>
+                  <li>• Use voice for amount: "500" or "paanch sau"</li>
+                  <li>• Use voice for notes: "Bijli bill" etc.</li>
+                </ul>
               </div>
 
               {/* Actions */}
