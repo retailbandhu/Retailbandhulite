@@ -39,7 +39,8 @@ export type Screen =
   | 'contact'
   | 'videos'
   | 'faq'
-  | 'admin-panel';
+  | 'admin-panel'
+  | 'database-settings';
 
 export interface Product {
   id: string;

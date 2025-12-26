@@ -1,4 +1,4 @@
-import { ArrowLeft, Store, Bell, Palette, Printer, CreditCard, Globe, ChevronRight, LogOut, Database, Download, Upload, Trash2, Receipt, Award, AlertTriangle, Activity, Shield, Mic } from 'lucide-react';
+import { ArrowLeft, Store, Bell, Palette, Printer, CreditCard, Globe, ChevronRight, LogOut, Database, Download, Upload, Trash2, Receipt, Award, AlertTriangle, Activity, Shield, Mic, Cloud } from 'lucide-react';
 import { Screen, StoreInfo } from '../types';
 import { storage } from '../utils/storage';
 import { toast } from 'sonner@2.0.3';
@@ -113,6 +113,13 @@ export function SettingsScreen({ onNavigate, storeInfo, setStoreInfo, onLogout }
       subtitle: 'Secure your business data',
       action: () => onNavigate('data-backup'),
       color: 'bg-cyan-100 text-cyan-600'
+    },
+    {
+      icon: <Cloud className="w-5 h-5" />,
+      title: 'Database & Sync',
+      subtitle: 'Cloud sync and data migration',
+      action: () => onNavigate('database-settings'),
+      color: 'bg-blue-100 text-blue-600'
     },
     {
       icon: <Activity className="w-5 h-5" />,

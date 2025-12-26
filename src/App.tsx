@@ -64,6 +64,7 @@ const GlobalVoiceSearch = lazy(() => import('./components/GlobalVoiceSearch').th
 const BrowserCompatibilityBanner = lazy(() => import('./components/BrowserCompatibilityBanner').then(m => ({ default: m.BrowserCompatibilityBanner })));
 const VoiceTutorial = lazy(() => import('./components/VoiceTutorial').then(m => ({ default: m.VoiceTutorial })));
 const FloatingHelpButton = lazy(() => import('./components/FloatingHelpButton').then(m => ({ default: m.FloatingHelpButton })));
+const DatabaseSettings = lazy(() => import('./components/DatabaseSettings').then(m => ({ default: m.DatabaseSettings })));
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('marketing');
@@ -195,8 +196,10 @@ function App() {
     }
 
     // Set initial screen based on saved state
+    // IMPORTANT: New users (fresh visits) will stay on 'marketing' screen
+    // Returning users will go directly to their last state
     if (storage.getOnboardingDone()) {
-      // User has completed onboarding before
+      // User has completed onboarding before - returning user
       if (savedLogin && savedStoreSetup) {
         setCurrentScreen('dashboard');
       } else if (savedLogin) {
@@ -204,8 +207,11 @@ function App() {
       } else {
         setCurrentScreen('login');
       }
+    } else {
+      // New user - show marketing/landing page first
+      setCurrentScreen('marketing');
     }
-    // else: stays on 'marketing' screen (default)
+    // Marketing screen is default for first-time visitors
   }, []);
 
   // Save products whenever they change
@@ -409,6 +415,8 @@ function App() {
           return <PrinterSetup onNavigate={navigateTo} />;
         case 'admin-panel':
           return <EnhancedAdminPanel onNavigate={navigateTo} />;
+        case 'database-settings':
+          return <DatabaseSettings onNavigate={navigateTo} />;
         default:
           return (
             <Dashboard 
