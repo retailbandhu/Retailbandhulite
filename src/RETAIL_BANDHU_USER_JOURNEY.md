@@ -1,4 +1,5 @@
 # 🛣️ Retail Bandhu Lite - Complete User Journey & Flow
+
 ## CTO's Guide to User Experience
 
 ---
@@ -18,6 +19,7 @@
 ## 👥 USER PERSONAS
 
 ### **Persona 1: Ramesh (First-Time User)**
+
 ```
 Name: Ramesh Kumar
 Age: 35
@@ -30,6 +32,7 @@ Language: Hinglish (मिक्स)
 ```
 
 ### **Persona 2: Priya (Returning User)**
+
 ```
 Name: Priya Sharma
 Age: 28
@@ -42,6 +45,7 @@ Language: English with Hindi
 ```
 
 ### **Persona 3: Vikram (Power User)**
+
 ```
 Name: Vikram Patel
 Age: 42
@@ -80,6 +84,7 @@ PHASE 6: RETENTION (Continued Value)
 ## 📱 PHASE 1: DISCOVERY & AWARENESS
 
 ### **Entry Points**
+
 ```
 1. Direct URL visit → retailbandhu.com
 2. Google Search → "billing app for kirana"
@@ -96,23 +101,24 @@ graph TD
     B -->|Scroll Down| C[View Features Section]
     B -->|Click Nav| D[Explore Pricing/Blog/Resources]
     B -->|Immediate Action| E[Click "Get Started"]
-    
+
     C --> F[Read Feature Details]
     F --> G{Convinced?}
     G -->|Yes| E
     G -->|No| H[Leave Site]
-    
+
     D --> I[View Pricing Plans]
     I --> J{Interested?}
     J -->|Yes| E
     J -->|No| H
-    
+
     E --> K[Splash Screen]
 ```
 
 ### **Screen 1: Marketing Landing Page**
 
 **What User Sees:**
+
 ```
 ┌──────────────────────────────────────────────┐
 │  🏪 Retail Bandhu                    [LOGIN] │
@@ -138,6 +144,7 @@ graph TD
 ```
 
 **User Actions Available:**
+
 - ✅ Click "Get Started" → Goes to Splash Screen
 - ✅ Click "Login" → Goes to Login (if returning user)
 - ✅ Scroll to see features
@@ -177,6 +184,7 @@ graph TD
 ### **Screen 3: Onboarding Slides (4 Slides)**
 
 #### **Slide 1: Voice Billing Introduction**
+
 ```
 ┌──────────────────────────────────────────────┐
 │                    1/4                  [Skip]│
@@ -198,6 +206,7 @@ graph TD
 **User Learning:** Can speak naturally to create bills
 
 #### **Slide 2: Inventory Management**
+
 ```
 ┌──────────────────────────────────────────────┐
 │                    2/4                  [Skip]│
@@ -220,6 +229,7 @@ graph TD
 **User Learning:** Automated stock management
 
 #### **Slide 3: WhatsApp Integration**
+
 ```
 ┌──────────────────────────────────────────────┐
 │                    3/4                  [Skip]│
@@ -242,6 +252,7 @@ graph TD
 **User Learning:** Share bills and catalogs via WhatsApp
 
 #### **Slide 4: Reports & Analytics**
+
 ```
 ┌──────────────────────────────────────────────┐
 │                    4/4                  [Skip]│
@@ -264,6 +275,7 @@ graph TD
 **User Learning:** Get insights to grow business
 
 **User Actions:**
+
 - ✅ Swipe left/right to navigate
 - ✅ Click "Skip" → Goes directly to Login
 - ✅ Click "Next" → Goes to next slide
@@ -300,6 +312,7 @@ graph TD
 ```
 
 **Flow for Ramesh (First-Time User):**
+
 ```
 1. Enters phone: 9876543210
 2. Clicks "Login with OTP"
@@ -309,6 +322,7 @@ graph TD
 ```
 
 **Flow for Priya (Returning User):**
+
 ```
 1. Enters phone: 9988776655
 2. Clicks "Login with OTP"
@@ -318,6 +332,7 @@ graph TD
 ```
 
 **Validation:**
+
 - Phone must be 10 digits
 - Shows error if invalid
 - Mock OTP (no real SMS in demo)
@@ -366,11 +381,13 @@ graph TD
 ```
 
 **User Actions:**
+
 1. Fill store details
 2. Click "Continue"
 3. Data saved to localStorage
 
 **Validation:**
+
 - Store name is required
 - Phone auto-filled from login
 - GSTIN format validated if provided
@@ -414,6 +431,7 @@ graph TD
 ```
 
 **Ramesh's Choices:**
+
 - ✅ Enable GST (5%)
 - ✅ Enable loyalty points
 - ✅ Track stock levels
@@ -455,11 +473,13 @@ graph TD
 ```
 
 **Interactive Steps:**
+
 1. **Add Product:** Shows inline form, user adds "Maggie"
 2. **Create Bill:** Voice overlay appears, adds 2x Maggie
 3. **Add Customer:** Form appears, adds sample customer
 
 **Completion:**
+
 - ✅ Confetti animation
 - ✅ Toast: "Setup complete! Chalo shuru karte hain 🚀"
 - ✅ → Redirects to Dashboard
@@ -489,6 +509,7 @@ graph TD
 ```
 
 **Bottom Navigation (Mobile):**
+
 1. 🏠 **Home** - Dashboard
 2. 💰 **New Bill** - Enhanced Billing
 3. 📦 **Stock** - Inventory
@@ -540,6 +561,7 @@ graph TD
 ```
 
 **Key Information:**
+
 - Personalized greeting (time-based)
 - Today's metrics (auto-updating)
 - Quick action shortcuts
@@ -547,6 +569,7 @@ graph TD
 - Alerts and notifications
 
 **User Journey - Typical Morning:**
+
 ```
 Ramesh arrives at shop at 8:00 AM
 ↓
@@ -677,6 +700,7 @@ Complete Bill → Done!
 ```
 
 **Voice Billing Overlay:**
+
 ```
 ┌──────────────────────────────────────────────┐
 │                                              │
@@ -698,6 +722,7 @@ Complete Bill → Done!
 ```
 
 After 2 seconds:
+
 ```
 ✨ Items added successfully!
    • 3x Maggie
@@ -756,6 +781,7 @@ After clicking "Complete Bill":
 ```
 
 **User Actions:**
+
 1. **Share WhatsApp:** Opens WhatsApp with pre-filled message
 2. **Print:** Opens print dialog (browser native)
 3. **Email:** Opens email compose with bill attached
@@ -763,6 +789,7 @@ After clicking "Complete Bill":
 5. **Back to Home:** Returns to dashboard
 
 **WhatsApp Share Format:**
+
 ```
 🏪 *RAMESH KIRANA STORE*
 📍 Shop 5, MG Road, Pune
@@ -1312,7 +1339,7 @@ Bandhu responds:
      3. Parle-G - ₹1,250 (250 units)
      4. Lays - ₹980 (98 units)
      5. Kurkure - ₹850 (85 units)
-     
+
      Maggie aapka bestseller hai! 🏆"
     ↓
 Ramesh: "Profit margin kitna hai?"
@@ -1320,7 +1347,7 @@ Ramesh: "Profit margin kitna hai?"
 Bandhu: "Average profit margin 25% hai.
      Maggie: 30% (₹4 profit per piece)
      Pepsi: 20% (₹5 profit per bottle)
-     
+
      Snacks category mein best margin hai!"
     ↓
 Ramesh: "Thanks Bandhu!"
@@ -1928,6 +1955,7 @@ KEY SUCCESS METRICS:
 **Status:** Complete & Production-Ready ✅
 
 **Next Steps:**
+
 1. ✅ User testing with 10 beta users
 2. ✅ Gather feedback & iterate
 3. ✅ Launch marketing campaign
